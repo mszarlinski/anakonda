@@ -2,9 +2,11 @@ package com.gft.digitalbank.exchange.solution.jms;
 
 import lombok.SneakyThrows;
 
+import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
 
+import javax.jms.JMSException;
 import javax.jms.TextMessage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -20,9 +22,16 @@ class MessageDeserializer {
         this.objectMapper = objectMapper;
     }
 
-    @SneakyThrows
+//    @SneakyThrows
     Map<String, Object> deserialize(final TextMessage message) {
         //TODO: return model object
-        return objectMapper.readValue(message.getText(), HashMap.class);
+        try {
+            return objectMapper.readValue(message.getText(), HashMap.class);
+        } catch (IOException e) {
+            e.printStackTrace();
+        } catch (JMSException e) {
+            e.printStackTrace();
+        }
+        return null;
     }
 }

@@ -53,25 +53,32 @@ public class StockExchange implements Exchange {
     @Override
     public void start() {
         log.info("Starting StockExchange");
-
+long start = System.currentTimeMillis();
         Assert.notNull(processingListener, "processingListener cannot be null");
 
         ExecutorService executorService = null;
         JmsContext jmsContext = null;
         try {
             final CountDownLatch shutdownLatch = new CountDownLatch(destinations.size());
-            executorService = Executors.newFixedThreadPool(destinations.size()); //TODO:
             jmsContext = jmsConnector.connect(destinations, shutdownLatch, executorService, processingListener);
 
             shutdownLatch.await();
         } catch (Exception ex) {
+            log.error("TIMEOUT, time = " + (System.currentTimeMillis() - start) / 1000);
             log.error(ex.getMessage(), ex);
-        } finally {
-            executorService.shutdown();
-            jmsConnector.shutdown(jmsContext);
 
+        } finally {
+            shutdown(executorService, jmsContext);
             log.info("Shutdown finished");
         }
+    }
+
+    private void shutdown(final ExecutorService executorService, final JmsContext jmsContext) {
+        if (executorService != null) {
+            executorService.shutdown();
+        }
+
+        jmsConnector.shutdown(jmsContext);
     }
 
     @VisibleForTesting
