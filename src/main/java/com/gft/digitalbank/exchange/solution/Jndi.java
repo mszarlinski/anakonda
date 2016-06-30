@@ -1,4 +1,4 @@
-package com.gft.digitalbank.exchange.solution.jms;
+package com.gft.digitalbank.exchange.solution;
 
 import lombok.SneakyThrows;
 
@@ -7,18 +7,18 @@ import javax.naming.Context;
 /**
  * @author mszarlinski on 2016-06-28.
  */
-class Jndi {
+public class Jndi {
 
     private final Context context;
 
     @SneakyThrows
-    Jndi(final Context context) {
+    public Jndi(final Context context) {
         this.context = context;
     }
 
-    @SneakyThrows
     @SuppressWarnings("unchecked")
-    <T> T lookup(final String name) {
+    @SneakyThrows
+    public <T> T lookup(final String name) {
         return (T) context.lookup(name);
     }
 }

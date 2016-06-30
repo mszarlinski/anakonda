@@ -1,12 +1,17 @@
-package com.gft.digitalbank.exchange.solution.processing;
+package com.gft.digitalbank.exchange.solution.jms;
 
 import java.util.Comparator;
 import java.util.concurrent.PriorityBlockingQueue;
+
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.gft.digitalbank.exchange.solution.Jndi;
 
 /**
  * @author mszarlinskion 2016-06-28.
@@ -48,4 +53,14 @@ public class ProcessingConfiguration {
         return new PriorityBlockingQueue<>(INITIAL_CAPACITY, ORDERS_BY_PRICE_AND_ID_COMPARATOR.reversed());
     }
 
+    @Bean
+    public JmsConnector jmsConnector(Jndi jndi, MessageDeserializer messageDeserializer) {
+        return new JmsConnector(jndi, messageDeserializer);
+    }
+
+    @Bean
+    public Jndi jndi() throws NamingException {
+        Context context = new InitialContext();
+        return new Jndi(context);
+    }
 }

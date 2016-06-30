@@ -7,6 +7,8 @@ import javax.naming.NamingException;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+import com.gft.digitalbank.exchange.solution.Jndi;
+
 /**
  * Spring context configuration for Exchange application.
  *
@@ -15,24 +17,15 @@ import org.springframework.context.annotation.Configuration;
 @Configuration
 public class JmsConfiguration {
 
-    @Bean
-    public QueueConnector queueConnector() {
-        return new QueueConnector();
-    }
+//    @Bean
+//    public JmsConnector jmsConnector(Jndi jndi) {
+//        return new JmsConnector(jndi, messageDeserializer);
+//    }
+//
+//    @Bean
+//    public Jndi jndi() throws NamingException {
+//        Context context = new InitialContext();
+//        return new Jndi(context);
+//    }
 
-    @Bean
-    public JmsConnector jmsConnector(Jndi jndi) {
-        return new JmsConnector(jndi);
-    }
-
-    @Bean
-    public Jndi jndi() throws NamingException {
-        Context context = new InitialContext();
-        return new Jndi(context);
-    }
-
-    @Bean
-    public MessageConsumersCreator messageConsumersCreator() {
-        return new MessageConsumersCreator();
-    }
 }

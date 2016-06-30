@@ -1,4 +1,4 @@
-package com.gft.digitalbank.exchange.solution.processing;
+package com.gft.digitalbank.exchange.solution.jms;
 
 import lombok.Data;
 
