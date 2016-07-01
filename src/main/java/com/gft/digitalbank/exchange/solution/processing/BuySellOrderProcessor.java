@@ -1,70 +1,89 @@
 package com.gft.digitalbank.exchange.solution.processing;
 
-import static com.gft.digitalbank.exchange.solution.jms.ProcessingConfiguration.ORDERS_BY_PRICE_AND_TS_COMPARATOR;
-
-import java.util.Map;
-import java.util.concurrent.ConcurrentMap;
-
 import com.gft.digitalbank.exchange.solution.jms.GuardedPriorityQueue;
 import com.gft.digitalbank.exchange.solution.message.Order;
+
+import java.util.Comparator;
+import java.util.Map;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentSkipListSet;
+
+import static com.gft.digitalbank.exchange.solution.jms.ProcessingConfiguration.ORDERS_BY_PRICE_AND_TS_COMPARATOR;
 
 /**
  * @author mszarlinski on 2016-07-01.
  */
 public class BuySellOrderProcessor {
 
-    private final ConcurrentMap<String, GuardedPriorityQueue<Order>> buyQueues;
+    private final ConcurrentMap<String, GuardedPriorityQueue<Order>> buyQueuesByProduct;
 
-    private final ConcurrentMap<String, GuardedPriorityQueue<Order>> sellQueues;
+    private final ConcurrentMap<String, GuardedPriorityQueue<Order>> sellQueuesByProduct;
 
-    public BuySellOrderProcessor(final ConcurrentMap<String, GuardedPriorityQueue<Order>> buyQueues, final ConcurrentMap<String, GuardedPriorityQueue<Order>> sellQueues) {
-        this.buyQueues = buyQueues;
-        this.sellQueues = sellQueues;
+    private final ConcurrentMap<Integer, Order> orderIdToOrder;
+
+    private final ConcurrentSkipListSet<Integer> buyOrders;
+
+    public BuySellOrderProcessor(final ConcurrentMap<String, GuardedPriorityQueue<Order>> buyQueuesByProduct, final ConcurrentMap<String, GuardedPriorityQueue<Order>> sellQueuesByProduct, final ConcurrentMap<Integer, Order> orderIdToOrder, final ConcurrentSkipListSet<Integer> buyOrders) {
+        this.buyQueuesByProduct = buyQueuesByProduct;
+        this.sellQueuesByProduct = sellQueuesByProduct;
+        this.orderIdToOrder = orderIdToOrder;
+        this.buyOrders = buyOrders;
     }
 
     public void processBuy(final Map<String, Object> message) {
-        final Order buyOrder = Order.fromMessage(message);
+        processOrder(message, true, buyQueuesByProduct, sellQueuesByProduct, (buyPrice, sellPrice) -> buyPrice - sellPrice);
+    }
 
-        final String product = buyOrder.getProduct();
-        GuardedPriorityQueue<Order> buyQueue = getOrCreateQueue(buyQueues, product);
-        GuardedPriorityQueue<Order> sellQueue = getOrCreateQueue(sellQueues, product);
+    private void processOrder(final Map<String, Object> message, final boolean isBuyOrder, final ConcurrentMap targetQueues, final ConcurrentMap counterQueues,
+                              final Comparator<Integer> priceCondition) {
 
-        sellQueue.lock();
+        final Order order = Order.fromMessage(message);
 
-        if (sellQueue.isEmpty()) {
-            sellQueue.unlock();
+        final String product = order.getProduct();
+        final GuardedPriorityQueue<Order> targetQueue = getOrCreateQueue(targetQueues, product);
+        final GuardedPriorityQueue<Order> counterQueue = getOrCreateQueue(counterQueues, product);
 
-            buyQueue.addWithLock(buyOrder);
+        counterQueue.lock();
+
+        if (counterQueue.isEmpty()) {
+            counterQueue.unlock();
+
+            targetQueue.addWithLock(order);
         } else {
-            // sellQueues is locked
+            // counterQueue is locked
 
-            int amountLeft = buyOrder.getAmount();
-            while (!sellQueue.isEmpty() && amountLeft > 0) {
+            int amountLeft = order.getAmount();
+            while (!counterQueue.isEmpty() && amountLeft > 0) {
 
-                final Order sellOrder = sellQueue.peek();
+                final Order counterOrder = counterQueue.peek();
 
-                if (sellOrder.getPrice() < buyOrder.getPrice()) {
-
-                    if (amountLeft < sellOrder.getAmount()) {
-                        sellOrder.setAmount(sellOrder.getAmount() - amountLeft);
+                if (priceCondition.compare(counterOrder.getPrice(), order.getPrice()) < 0) {
+                    if (amountLeft < counterOrder.getAmount()) {
+                        counterOrder.setAmount(counterOrder.getAmount() - amountLeft);
                         amountLeft = 0;
                     } else {
-                        amountLeft -= sellOrder.getAmount();
+                        amountLeft -= counterOrder.getAmount();
                     }
                 }
             }
 
-            sellQueue.unlock();
+            counterQueue.unlock();
 
             if (amountLeft > 0) {
-                buyOrder.setAmount(amountLeft);
-                buyQueue.addWithLock(buyOrder);
+                order.setAmount(amountLeft);
+                targetQueue.lock(); //FIXME: synchro
+                targetQueue.add(order);
+                if (isBuyOrder) {
+                    buyOrders.add(order.getId());
+                }
+                orderIdToOrder.put(order.getId(), order);
+                targetQueue.unlock();
             }
         }
     }
 
     private GuardedPriorityQueue<Order> getOrCreateQueue(final ConcurrentMap<String, GuardedPriorityQueue<Order>> queues, final String product) {
-        synchronized (queues) {
+        synchronized (queues) { // FIXME: synchro
             GuardedPriorityQueue<Order> queue = queues.get(product);
             if (queue == null) {
                 queue = new GuardedPriorityQueue<>(ORDERS_BY_PRICE_AND_TS_COMPARATOR);
@@ -74,46 +93,9 @@ public class BuySellOrderProcessor {
         }
     }
 
-    // TODO: code duplication
     public void processSell(final Map<String, Object> message) {
-        final Order sellOrder = Order.fromMessage(message);
+        processOrder(message, false, sellQueuesByProduct, buyQueuesByProduct, (buyPrice, sellPrice) -> sellPrice - buyPrice);
 
-        final String product = sellOrder.getProduct();
-        GuardedPriorityQueue<Order> buyQueue = getOrCreateQueue(buyQueues, product);
-        GuardedPriorityQueue<Order> sellQueue = getOrCreateQueue(sellQueues, product);
-
-        buyQueue.lock();
-
-        if (buyQueue.isEmpty()) {
-            buyQueue.unlock();
-
-            buyQueue.addWithLock(sellOrder);
-        } else {
-            // buyQueues is locked
-
-            int amountLeft = sellOrder.getAmount();
-            while (!buyQueue.isEmpty() && amountLeft > 0) {
-
-                final Order buyOrder = buyQueue.peek();
-
-                if (buyOrder.getPrice() > sellOrder.getPrice()) {
-
-                    if (amountLeft < buyOrder.getAmount()) {
-                        buyOrder.setAmount(buyOrder.getAmount() - amountLeft);
-                        amountLeft = 0;
-                    } else {
-                        amountLeft -= buyOrder.getAmount();
-                    }
-                }
-            }
-
-            buyQueue.unlock();
-
-            if (amountLeft > 0) {
-                sellOrder.setAmount(amountLeft);
-                sellQueue.addWithLock(sellOrder);
-            }
-        }
     }
 
 }

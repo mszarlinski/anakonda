@@ -76,17 +76,17 @@ public class ProcessingConfiguration {
 
     @Bean
     public BuySellOrderProcessor buySellOrderProcessor() {
-        return new BuySellOrderProcessor(buyQueues(), sellQueues());
+        return new BuySellOrderProcessor(buyQueues(), sellQueues(), orderIdToOrder, buyOrders);
     }
 
     @Bean
     public ModificationProcessor modificationProcessor() {
-        return new ModificationProcessor(buyQueues(), sellQueues(), orderIdToOrder());
+        return new ModificationProcessor(buyQueues(), sellQueues(), orderIdToOrder(), buyOrders);
     }
 
     @Bean
     public CancellationProcessor cancellationProcessor() {
-        return new CancellationProcessor(buyQueues(), sellQueues(), orderIdToOrder());
+        return new CancellationProcessor(buyQueues(), sellQueues(), orderIdToOrder(), buyOrders);
     }
 
     @Bean

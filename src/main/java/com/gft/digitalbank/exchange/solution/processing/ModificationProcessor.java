@@ -1,8 +1,8 @@
 package com.gft.digitalbank.exchange.solution.processing;
 
 import java.util.Map;
-import java.util.Optional;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.ConcurrentSkipListSet;
 
 import com.gft.digitalbank.exchange.solution.jms.GuardedPriorityQueue;
 import com.gft.digitalbank.exchange.solution.message.Modification;
@@ -13,17 +13,20 @@ import com.gft.digitalbank.exchange.solution.message.Order;
  */
 public class ModificationProcessor {
 
-    private final ConcurrentMap<String, GuardedPriorityQueue<Order>> buyQueues;
+    private final ConcurrentMap<String, GuardedPriorityQueue<Order>> buyQueuesByProduct;
 
-    private final ConcurrentMap<String, GuardedPriorityQueue<Order>> sellQueues;
+    private final ConcurrentMap<String, GuardedPriorityQueue<Order>> sellQueuesByProduct;
 
     private final ConcurrentMap<Integer, Order> orderIdToOrder;
 
-    public ModificationProcessor(final ConcurrentMap<String, GuardedPriorityQueue<Order>> buyQueues, final ConcurrentMap<String, GuardedPriorityQueue<Order>> sellQueues, final
-    ConcurrentMap<Integer, Order> orderIdToOrder) {
-        this.buyQueues = buyQueues;
-        this.sellQueues = sellQueues;
+    private final ConcurrentSkipListSet<Integer> buyOrders;
+
+    public ModificationProcessor(final ConcurrentMap<String, GuardedPriorityQueue<Order>> buyQueuesByProduct, final ConcurrentMap<String, GuardedPriorityQueue<Order>> sellQueuesByProduct, final
+    ConcurrentMap<Integer, Order> orderIdToOrder, final ConcurrentSkipListSet<Integer> buyOrders) {
+        this.buyQueuesByProduct = buyQueuesByProduct;
+        this.sellQueuesByProduct = sellQueuesByProduct;
         this.orderIdToOrder = orderIdToOrder;
+        this.buyOrders = buyOrders;
     }
 
     public void process(final Map<String, Object> message) {
@@ -34,38 +37,24 @@ public class ModificationProcessor {
 
         final String product = order.getProduct();
 
-        final GuardedPriorityQueue<Order> buyOrders = buyQueues.get(product);
-        if (buyOrders != null) {
-            final boolean applied = applyModificationToBuyOrder(modification, buyOrders);
-            if (!applied) {
-                if (!applyModificationToSellOrder(modification, product)) {
-                    throw new IllegalArgumentException("Order not found for modification: " + modifiedOrderId);
-                }
-            }
+        if (isBuyOrder(modifiedOrderId)) {
+            modifyOrderInQueue(modification, buyQueuesByProduct.get(product));
         } else {
-            if (!applyModificationToSellOrder(modification, product)) {
-                throw new IllegalArgumentException("Order not found for modification: " + modifiedOrderId);
-            }
+            modifyOrderInQueue(modification, sellQueuesByProduct.get(product));
         }
     }
 
-    private boolean applyModificationToBuyOrder(final Modification modification, final GuardedPriorityQueue<Order> buyOrders) {
-        buyOrders.lock();
+    private boolean isBuyOrder(final int orderId) {
+        return buyOrders.contains(orderId);
+    }
+
+    private void modifyOrderInQueue(final Modification modification, final GuardedPriorityQueue<Order> ordersQueue) {
+        ordersQueue.lock();
         try {
-            return tryApplyModificationToOrder(modification, buyOrders);
-        } finally {
-            buyOrders.unlock();
-        }
-    }
-
-    private boolean tryApplyModificationToOrder(final Modification modification, final GuardedPriorityQueue<Order> ordersQueue) {
-        // ordersQueue is locked
-        final Optional<Order> modifiedOrderOpt = ordersQueue.stream()
-            .filter(o -> o.getId() == modification.getModifiedOrderId())
-            .findFirst();
-
-        if (modifiedOrderOpt.isPresent()) {
-            final Order modifiedOrder = modifiedOrderOpt.get();
+            final Order modifiedOrder = ordersQueue.stream()
+                    .filter(o -> o.getId() == modification.getModifiedOrderId())
+                    .findFirst()
+                    .get();
 
             if (modification.getNewPrice() != modifiedOrder.getPrice()) {
                 ordersQueue.remove(modifiedOrder); // we should reinsert the order to alter order in the queue
@@ -75,23 +64,8 @@ public class ModificationProcessor {
                 // there is no need to reinsert the order
                 modifiedOrder.modify(modification);
             }
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-    private boolean applyModificationToSellOrder(final Modification modification, final String product) {
-        final GuardedPriorityQueue<Order> sellOrders = sellQueues.get(product);
-        if (sellOrders != null) {
-            sellOrders.lock();
-            try {
-                return tryApplyModificationToOrder(modification, sellOrders);
-            } finally {
-                sellOrders.unlock();
-            }
-        } else {
-            return false;
+        } finally {
+            ordersQueue.unlock();
         }
     }
 }
