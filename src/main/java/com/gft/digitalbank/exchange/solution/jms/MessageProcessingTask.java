@@ -1,13 +1,19 @@
 package com.gft.digitalbank.exchange.solution.jms;
 
-import com.gft.digitalbank.exchange.listener.ProcessingListener;
-import com.gft.digitalbank.exchange.model.SolutionResult;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import javax.jms.*;
 import java.util.Map;
 import java.util.concurrent.CountDownLatch;
+
+import javax.jms.Connection;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageConsumer;
+import javax.jms.MessageListener;
+import javax.jms.Queue;
+import javax.jms.Session;
+import javax.jms.TextMessage;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
 
 /**
  * @author mszarlinski on 2016-06-30.
@@ -18,41 +24,38 @@ public class MessageProcessingTask implements MessageListener {
 
     private static final boolean NON_TRANSACTED = false;
 
-    private final String queueName;
-
-    private final Connection connection;
-
-    private final CountDownLatch shutdownLatch;
-
-    private final ProcessingListener processingListener;
+    private CountDownLatch shutdownLatch;
 
     private final MessageDeserializer messageDeserializer;
 
-    public MessageProcessingTask(final String queueName, final Connection connection, final CountDownLatch shutdownLatch, final ProcessingListener processingListener,
-                                 final MessageDeserializer messageDeserializer) {
-        this.queueName = queueName;
-        this.connection = connection;
-        this.shutdownLatch = shutdownLatch;
-        this.processingListener = processingListener;
+    private final MessageProcessingDispatcher messageProcessingDispatcher;
+
+    private Session session;
+
+    private MessageConsumer messageConsumer;
+
+    public MessageProcessingTask(final MessageDeserializer messageDeserializer, final MessageProcessingDispatcher messageProcessingDispatcher) {
         this.messageDeserializer = messageDeserializer;
+        this.messageProcessingDispatcher = messageProcessingDispatcher;
     }
 
-    public Session start() {
-        Session session = null;
+    public void start(final String queueName, final CountDownLatch shutdownLatch, final Connection connection) {
+        log.info("Starting task for queue: " + queueName);
+
+        this.shutdownLatch = shutdownLatch;
+
         try {
             session = connection.createSession(NON_TRANSACTED, Session.AUTO_ACKNOWLEDGE);
             final Queue queue = createQueue(queueName, session);
-            final MessageConsumer consumer = session.createConsumer(queue);
-            consumer.setMessageListener(this);
-            log.warn("*** Task started");
-            return session;
+
+            messageConsumer = session.createConsumer(queue);
+            messageConsumer.setMessageListener(this);
+
+            log.info("Task started");
         } catch (JMSException e) {
             log.error(e.getMessage(), e);
-            tryClose(session);
-            return null;
+            shutdown();
         }
-
-
     }
 
     @Override
@@ -61,23 +64,36 @@ public class MessageProcessingTask implements MessageListener {
 
         if (message instanceof TextMessage) {
             final Map<String, Object> messageObj = messageDeserializer.deserialize((TextMessage) message);
+            final String messageType = (String) messageObj.get("messageType");
 
-            if ("SHUTDOWN_NOTIFICATION" .equals(messageObj.get("messageType"))) {
-                processingListener.processingDone(SolutionResult.builder()
-                        .build());
-
-                shutdownLatch.countDown();
+            switch (messageType) {
+                case "SHUTDOWN_NOTIFICATION":
+                    processShutdownNotification();
+                    break;
+                case "ORDER":
+                case "MODIFICATION":
+                case "CANCEL":
+                    messageProcessingDispatcher.process(messageObj);
+                    break;
+                default:
+                    throw new IllegalArgumentException("Unknown message type: " + messageType);
             }
+        } else {
+            throw new IllegalArgumentException("Unsupported message class: " + message.getClass().getName());
         }
     }
 
-    private void tryClose(final Session session) {
-        if (session != null) {
-            try {
-                session.close();
-            } catch (JMSException e) {
-                log.error(e.getMessage(), e);
-            }
+    private void processShutdownNotification() {
+        shutdownLatch.countDown();
+        shutdown();
+    }
+
+    private void shutdown() {
+        try {
+            messageConsumer.close();
+            session.close();
+        } catch (JMSException ex) {
+            log.error(ex.getMessage(), ex);
         }
     }
 
