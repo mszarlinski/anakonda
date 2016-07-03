@@ -1,19 +1,11 @@
 package com.gft.digitalbank.exchange.solution.jms;
 
-import java.util.Map;
-import java.util.concurrent.CountDownLatch;
-
-import javax.jms.Connection;
-import javax.jms.JMSException;
-import javax.jms.Message;
-import javax.jms.MessageConsumer;
-import javax.jms.MessageListener;
-import javax.jms.Queue;
-import javax.jms.Session;
-import javax.jms.TextMessage;
-
+import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
+
+import javax.jms.*;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * @author mszarlinski on 2016-06-30.
@@ -60,11 +52,9 @@ public class MessageProcessingTask implements MessageListener {
 
     @Override
     public void onMessage(final Message message) {
-        log.info("Message received: " + message);
-
         if (message instanceof TextMessage) {
-            final Map<String, Object> messageObj = messageDeserializer.deserialize((TextMessage) message);
-            final String messageType = (String) messageObj.get("messageType");
+            final JsonObject messageObj = messageDeserializer.deserialize((TextMessage) message);
+            final String messageType = messageObj.get("messageType").getAsString();
 
             switch (messageType) {
                 case "SHUTDOWN_NOTIFICATION":

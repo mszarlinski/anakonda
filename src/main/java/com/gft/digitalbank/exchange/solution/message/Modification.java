@@ -1,9 +1,8 @@
 package com.gft.digitalbank.exchange.solution.message;
 
+import com.google.gson.JsonObject;
 import lombok.Builder;
 import lombok.Data;
-
-import java.util.Map;
 
 /**
  * @author mszarlinski on 2016-06-29.
@@ -20,14 +19,14 @@ public class Modification {
 
     private final long timestamp;
 
-    public static Modification fromMessage(final Map<String, Object> message) {
-        final Map<String, Object> details = (Map<String, Object>) message.get("details"); // TODO: JsonObject
+    public static Modification fromMessage(final JsonObject message) {
+        final JsonObject details = message.get("details").getAsJsonObject();
 
         return Modification.builder()
-            .modifiedOrderId((int) message.get("modifiedOrderId"))
-            .timestamp((int) message.get("timestamp"))
-            .newAmount((int) details.get("amount"))
-            .newPrice((int) message.get("price"))
-            .build();
+                .modifiedOrderId(message.get("modifiedOrderId").getAsInt())
+                .timestamp(message.get("timestamp").getAsInt())
+                .newAmount(details.get("amount").getAsInt())
+                .newPrice(message.get("price").getAsInt())
+                .build();
     }
 }

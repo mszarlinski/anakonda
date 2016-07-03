@@ -1,5 +1,6 @@
 package com.gft.digitalbank.exchange.solution.message;
 
+import com.google.gson.JsonObject;
 import lombok.Builder;
 import lombok.Data;
 
@@ -16,10 +17,10 @@ public class Cancellation {
 
     private final long timestamp;
 
-    public static Cancellation fromMessage(final Map<String, Object> message) {
+    public static Cancellation fromMessage(final JsonObject message) {
         return Cancellation.builder()
-            .cancelledOrderId((int) message.get("cancelledOrderId"))
-            .timestamp((int) message.get("timestamp"))
+            .cancelledOrderId(message.get("cancelledOrderId").getAsInt())
+            .timestamp(message.get("timestamp").getAsInt())
             .build();
     }
 }

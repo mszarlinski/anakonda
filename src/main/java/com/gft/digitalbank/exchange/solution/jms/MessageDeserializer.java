@@ -1,28 +1,20 @@
 package com.gft.digitalbank.exchange.solution.jms;
 
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import lombok.SneakyThrows;
 
-import java.util.HashMap;
-import java.util.Map;
-
 import javax.jms.TextMessage;
-
-import com.fasterxml.jackson.databind.ObjectMapper;
 
 /**
  * @author mszarlinski on 2016-06-29.
  */
 class MessageDeserializer {
 
-    private final ObjectMapper objectMapper;
-
-    MessageDeserializer(final ObjectMapper objectMapper) {
-        this.objectMapper = objectMapper;
-    }
+    private final JsonParser jsonParser = new JsonParser();
 
     @SneakyThrows
-    Map<String, Object> deserialize(final TextMessage message) {
-        //TODO: return model object OR switch to Gson and JsonObject for static typing OR used OrderBroker from SDK
-        return objectMapper.readValue(message.getText(), HashMap.class);
+    JsonObject deserialize(final TextMessage message) {
+        return jsonParser.parse(message.getText()).getAsJsonObject();
     }
 }

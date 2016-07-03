@@ -1,10 +1,9 @@
 package com.gft.digitalbank.exchange.solution.jms;
 
-import java.util.Map;
-
 import com.gft.digitalbank.exchange.solution.processing.BuySellOrderProcessor;
 import com.gft.digitalbank.exchange.solution.processing.CancellationProcessor;
 import com.gft.digitalbank.exchange.solution.processing.ModificationProcessor;
+import com.google.gson.JsonObject;
 
 /**
  * @author mszarlinski on 2016-07-01.
@@ -18,19 +17,17 @@ public class MessageProcessingDispatcher {
     private final BuySellOrderProcessor buySellOrderProcessor;
 
     public MessageProcessingDispatcher(final ModificationProcessor modificationProcessor, final CancellationProcessor cancellationProcessor, final BuySellOrderProcessor
-        buySellOrderProcessor) {
+            buySellOrderProcessor) {
         this.modificationProcessor = modificationProcessor;
         this.cancellationProcessor = cancellationProcessor;
         this.buySellOrderProcessor = buySellOrderProcessor;
     }
 
-    public void process(final Map<String, Object> message) {
-        final String type = (String) message.get("messageType");
-        final String side = (String) message.get("side");
-        if (isBuyOrder(side)) {
-            buySellOrderProcessor.processBuy(message);
-        } else if (isSellOrder(side)) {
-            buySellOrderProcessor.processSell(message);
+    public void process(final JsonObject message) {
+        final String type = message.get("messageType").getAsString();
+        final String side = message.get("side").getAsString();
+        if (isBuyOrder(side) || isSellOrder(side)) {
+            buySellOrderProcessor.process(message);
         } else if (isModificationOrder(type)) {
             modificationProcessor.process(message);
         } else if (isCancelOrder(type)) {

@@ -1,71 +1,66 @@
 package com.gft.digitalbank.exchange.solution.processing;
 
-import java.util.Map;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.ConcurrentSkipListSet;
-
-import com.gft.digitalbank.exchange.solution.jms.GuardedPriorityQueue;
+import com.gft.digitalbank.exchange.solution.dataStructures.OrdersLog;
+import com.gft.digitalbank.exchange.solution.dataStructures.ProductRegistry;
 import com.gft.digitalbank.exchange.solution.message.Modification;
 import com.gft.digitalbank.exchange.solution.message.Order;
+import com.gft.digitalbank.exchange.solution.message.OrderSide;
+import com.google.gson.JsonObject;
+
+import java.util.PriorityQueue;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * @author mszarlinski on 2016-07-01.
  */
 public class ModificationProcessor {
 
-    private final ConcurrentMap<String, GuardedPriorityQueue<Order>> buyQueuesByProduct;
+    private final OrdersLog ordersLog;
+    private final ConcurrentMap<Integer, Order> ordersRegistry;
 
-    private final ConcurrentMap<String, GuardedPriorityQueue<Order>> sellQueuesByProduct;
-
-    private final ConcurrentMap<Integer, Order> orderIdToOrder;
-
-    private final ConcurrentSkipListSet<Integer> buyOrders;
-
-    public ModificationProcessor(final ConcurrentMap<String, GuardedPriorityQueue<Order>> buyQueuesByProduct, final ConcurrentMap<String, GuardedPriorityQueue<Order>> sellQueuesByProduct, final
-    ConcurrentMap<Integer, Order> orderIdToOrder, final ConcurrentSkipListSet<Integer> buyOrders) {
-        this.buyQueuesByProduct = buyQueuesByProduct;
-        this.sellQueuesByProduct = sellQueuesByProduct;
-        this.orderIdToOrder = orderIdToOrder;
-        this.buyOrders = buyOrders;
+    public ModificationProcessor(final OrdersLog ordersLog, final ConcurrentMap<Integer, Order> ordersRegistry) {
+        this.ordersLog = ordersLog;
+        this.ordersRegistry = ordersRegistry;
     }
 
-    public void process(final Map<String, Object> message) {
+    public void process(final JsonObject message) {
         final Modification modification = Modification.fromMessage(message);
 
+        System.out.println(Thread.currentThread().getName()+ " - " +modification); //FIXME
+
         final int modifiedOrderId = modification.getModifiedOrderId();
-        final Order order = orderIdToOrder.get(modifiedOrderId);
+        final Order order = ordersRegistry.get(modifiedOrderId);
 
         final String product = order.getProduct();
 
-        if (isBuyOrder(modifiedOrderId)) {
-            modifyOrderInQueue(modification, buyQueuesByProduct.get(product));
-        } else {
-            modifyOrderInQueue(modification, sellQueuesByProduct.get(product));
-        }
+        final ProductRegistry productRegistry = ordersLog.getProductRegistryForProduct(product);
+        productRegistry.doWithLock(() -> {
+            if (order.getOrderSide() == OrderSide.BUY) {
+                modifyOrderInQueue(modification, productRegistry.getBuyOrders());
+            } else {
+                modifyOrderInQueue(modification, productRegistry.getSellOrders());
+            }
+        });
     }
 
-    private boolean isBuyOrder(final int orderId) {
-        return buyOrders.contains(orderId);
-    }
+    private void modifyOrderInQueue(final Modification modification, final PriorityQueue<Order> ordersQueue) {
 
-    private void modifyOrderInQueue(final Modification modification, final GuardedPriorityQueue<Order> ordersQueue) {
-        ordersQueue.lock();
-        try {
-            final Order modifiedOrder = ordersQueue.stream()
-                    .filter(o -> o.getId() == modification.getModifiedOrderId())
-                    .findFirst()
-                    .get();
+        final Order modifiedOrder = ordersQueue.stream()
+                .filter(o -> o.getId() == modification.getModifiedOrderId())
+                .findFirst()
+                .get();
 
-            if (modification.getNewPrice() != modifiedOrder.getPrice()) {
-                ordersQueue.remove(modifiedOrder); // we should reinsert the order to alter order in the queue
-                modifiedOrder.modify(modification);
+        if (modification.getNewPrice() != modifiedOrder.getPrice()) {
+            ordersQueue.remove(modifiedOrder); // we should reinsert the order to alter order in the queue
+            modifiedOrder.modify(modification);
+            if (modifiedOrder.getAmount() > 0) {
                 ordersQueue.add(modifiedOrder);
             } else {
-                // there is no need to reinsert the order
-                modifiedOrder.modify(modification);
+                ordersRegistry.remove(modification.getModifiedOrderId());
             }
-        } finally {
-            ordersQueue.unlock();
+        } else {
+            // there is no need to reinsert the order
+            modifiedOrder.modify(modification);
         }
     }
 }

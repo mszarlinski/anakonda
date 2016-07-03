@@ -1,11 +1,8 @@
 package com.gft.digitalbank.exchange.solution.message;
 
+import com.google.gson.JsonObject;
 import lombok.Builder;
 import lombok.Data;
-
-import java.util.Map;
-
-import org.springframework.util.NumberUtils;
 
 /**
  * @author mszarlinski on 2016-06-29.
@@ -24,16 +21,18 @@ public class Order {
 
     private final String product;
 
-    public static Order fromMessage(final Map<String, Object> message) {
-        final Map<String, Object> details = (Map<String, Object>) message.get("details"); // TODO: JsonObject
+    private final OrderSide orderSide;
 
+    public static Order fromMessage(final JsonObject message) {
+        final JsonObject details = message.get("details").getAsJsonObject();
         return Order.builder()
-            .id((int) message.get("id"))
-            .timestamp((int) message.get("timestamp"))
-            .amount((int) details.get("amount"))
-            .price((int) details.get("price"))
-            .product((String) message.get("product"))
-            .build();
+                .id(message.get("id").getAsInt())
+                .timestamp(message.get("timestamp").getAsInt())
+                .amount(details.get("amount").getAsInt())
+                .price(details.get("price").getAsInt())
+                .product(message.get("product").getAsString())
+                .orderSide(OrderSide.valueOf(message.get("side").getAsString()))
+                .build();
     }
 
     public void modify(final Modification modification) {

@@ -1,10 +1,11 @@
-package com.gft.digitalbank.exchange.solution;
+package com.gft.digitalbank.exchange.solution.unit;
 
 import static com.googlecode.catchexception.CatchException.caughtException;
 import static com.googlecode.catchexception.apis.BDDCatchException.then;
 import static com.googlecode.catchexception.apis.BDDCatchException.when;
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.gft.digitalbank.exchange.solution.StockExchange;
 import org.junit.Test;
 import org.mockito.Mockito;
 

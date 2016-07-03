@@ -1,17 +1,15 @@
 package com.gft.digitalbank.exchange.solution;
 
-import lombok.NonNull;
-
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
-
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
 import com.gft.digitalbank.exchange.listener.ProcessingListener;
 import com.gft.digitalbank.exchange.model.SolutionResult;
 import com.gft.digitalbank.exchange.solution.jms.JmsConnector;
 import com.gft.digitalbank.exchange.solution.jms.JmsContext;
+import lombok.NonNull;
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
 
 /**
  * @author mszarlinski on 2016-07-01.
@@ -37,7 +35,7 @@ public class StockExchangeTask extends Thread {
     }
 
     @Override
-    public void start() {
+    public void run() {
         log.info("Starting StockExchangeTask");
 
         JmsContext jmsContext = null;
@@ -49,7 +47,7 @@ public class StockExchangeTask extends Thread {
 
             processingListener.processingDone(SolutionResult.builder()
 //                .orderBooks(createOrderBooks)
-                .build());
+                    .build());
 
             log.info("Processing finished");
         } catch (Exception ex) {

@@ -1,28 +1,22 @@
 package com.gft.digitalbank.exchange.solution.jms;
 
-import java.util.Comparator;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentLinkedQueue;
-import java.util.concurrent.ConcurrentMap;
-
-import javax.naming.Context;
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
-
+import com.gft.digitalbank.exchange.solution.Jndi;
+import com.gft.digitalbank.exchange.solution.Spring;
+import com.gft.digitalbank.exchange.solution.dataStructures.OrdersLog;
+import com.gft.digitalbank.exchange.solution.message.Order;
+import com.gft.digitalbank.exchange.solution.processing.BuySellOrderProcessor;
+import com.gft.digitalbank.exchange.solution.processing.CancellationProcessor;
+import com.gft.digitalbank.exchange.solution.processing.ModificationProcessor;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Scope;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.gft.digitalbank.exchange.model.Transaction;
-import com.gft.digitalbank.exchange.solution.Jndi;
-import com.gft.digitalbank.exchange.solution.Spring;
-import com.gft.digitalbank.exchange.solution.message.Order;
-import com.gft.digitalbank.exchange.solution.processing.BuySellOrderProcessor;
-import com.gft.digitalbank.exchange.solution.processing.CancellationProcessor;
-import com.gft.digitalbank.exchange.solution.processing.ModificationProcessor;
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * @author mszarlinskion 2016-06-28.
@@ -30,32 +24,19 @@ import com.gft.digitalbank.exchange.solution.processing.ModificationProcessor;
 @Configuration
 public class ProcessingConfiguration {
 
-    public static final Comparator<Order> ORDERS_BY_PRICE_AND_TS_COMPARATOR = Comparator.comparingInt(Order::getPrice)
-        .thenComparingLong(Order::getTimestamp);
-
     @Bean
     public MessageDeserializer messageDeserializer() {
-        return new MessageDeserializer(new ObjectMapper());
-    }
-
-    @Bean(name = "buyQueues")
-    public ConcurrentMap buyQueues() {
-        return new ConcurrentHashMap<>();
-    }
-
-    @Bean(name = "sellQueues")
-    public ConcurrentMap sellQueues() {
-        return new ConcurrentHashMap<>();
-    }
-
-    @Bean(name = "orderIdToOrder")
-    public ConcurrentMap orderIdToOrder() {
-        return new ConcurrentHashMap<>();
+        return new MessageDeserializer();
     }
 
     @Bean
-    public Queue<Transaction> transactions() {
-        return new ConcurrentLinkedQueue<>();
+    public OrdersLog ordersLog() {
+        return new OrdersLog();
+    }
+
+    @Bean
+    public ConcurrentMap<Integer, Order> ordersRegistry() {
+        return new ConcurrentHashMap();
     }
 
     @Bean
@@ -76,22 +57,22 @@ public class ProcessingConfiguration {
 
     @Bean
     public BuySellOrderProcessor buySellOrderProcessor() {
-        return new BuySellOrderProcessor(buyQueues(), sellQueues(), orderIdToOrder, buyOrders);
+        return new BuySellOrderProcessor(ordersLog(), ordersRegistry());
     }
 
     @Bean
     public ModificationProcessor modificationProcessor() {
-        return new ModificationProcessor(buyQueues(), sellQueues(), orderIdToOrder(), buyOrders);
+        return new ModificationProcessor(ordersLog(), ordersRegistry());
     }
 
     @Bean
     public CancellationProcessor cancellationProcessor() {
-        return new CancellationProcessor(buyQueues(), sellQueues(), orderIdToOrder(), buyOrders);
+        return new CancellationProcessor(ordersLog(), ordersRegistry());
     }
 
     @Bean
     public MessageProcessingDispatcher messageProcessingDispatcher(ModificationProcessor modificationProcessor, CancellationProcessor cancellationProcessor,
-        BuySellOrderProcessor buySellOrderProcessor) {
+                                                                   BuySellOrderProcessor buySellOrderProcessor) {
         return new MessageProcessingDispatcher(modificationProcessor, cancellationProcessor, buySellOrderProcessor);
     }
 

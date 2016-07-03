@@ -32,7 +32,7 @@ public class JmsConnector {
         final Connection connection = connectionFactory.createConnection();
         connection.start();
 
-        queues.parallelStream()
+        queues.stream() //TODO: parallel
             .forEach(queue -> {
                 final MessageProcessingTask pt = Spring.getBean(MessageProcessingTask.class);
                 pt.start(queue, shutdownLatch, connection);
