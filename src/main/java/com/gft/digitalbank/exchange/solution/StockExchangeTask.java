@@ -2,6 +2,7 @@ package com.gft.digitalbank.exchange.solution;
 
 import com.gft.digitalbank.exchange.listener.ProcessingListener;
 import com.gft.digitalbank.exchange.model.SolutionResult;
+import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
 import com.gft.digitalbank.exchange.solution.jms.JmsConnector;
 import com.gft.digitalbank.exchange.solution.jms.JmsContext;
 import lombok.NonNull;
@@ -26,9 +27,12 @@ public class StockExchangeTask extends Thread {
 
     private final JmsConnector jmsConnector;
 
+    private final ExchangeRegistry exchangeRegistry;
+
     public StockExchangeTask(@NonNull final ProcessingListener processingListener, @NonNull final List<String> destinations) {
         // TODO: StockExchangeTask as prototype bean
         jmsConnector = Spring.getBean(JmsConnector.class);
+        exchangeRegistry = Spring.getBean(ExchangeRegistry.class);
 
         this.processingListener = processingListener;
         this.destinations = destinations;
@@ -46,8 +50,9 @@ public class StockExchangeTask extends Thread {
             shutdownLatch.await();
 
             processingListener.processingDone(SolutionResult.builder()
-//                .orderBooks(createOrderBooks)
-                    .build());
+                .orderBooks(exchangeRegistry.extractOrderBooks())
+                .transactions(exchangeRegistry.extractTransactions())
+                .build());
 
             log.info("Processing finished");
         } catch (Exception ex) {

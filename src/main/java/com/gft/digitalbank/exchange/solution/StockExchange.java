@@ -44,7 +44,7 @@ public class StockExchange implements Exchange {
     }
 
     @VisibleForTesting
-    ProcessingListener getProcessingListener() {
+    public ProcessingListener getProcessingListener() {
         return processingListener;
     }
 }

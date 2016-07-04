@@ -1,41 +1,41 @@
 package com.gft.digitalbank.exchange.solution.processing;
 
-import com.gft.digitalbank.exchange.solution.dataStructures.OrdersLog;
+import java.util.PriorityQueue;
+import java.util.concurrent.ConcurrentMap;
+
+import com.gft.digitalbank.exchange.model.orders.Side;
+import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
 import com.gft.digitalbank.exchange.solution.dataStructures.ProductRegistry;
 import com.gft.digitalbank.exchange.solution.message.Modification;
 import com.gft.digitalbank.exchange.solution.message.Order;
-import com.gft.digitalbank.exchange.solution.message.OrderSide;
 import com.google.gson.JsonObject;
-
-import java.util.PriorityQueue;
-import java.util.concurrent.ConcurrentMap;
 
 /**
  * @author mszarlinski on 2016-07-01.
  */
-public class ModificationProcessor {
+public class ModificationProcessor implements MessageProcessor {
 
-    private final OrdersLog ordersLog;
+    private final ExchangeRegistry exchangeRegistry;
+
     private final ConcurrentMap<Integer, Order> ordersRegistry;
 
-    public ModificationProcessor(final OrdersLog ordersLog, final ConcurrentMap<Integer, Order> ordersRegistry) {
-        this.ordersLog = ordersLog;
+    public ModificationProcessor(final ExchangeRegistry exchangeRegistry, final ConcurrentMap<Integer, Order> ordersRegistry) {
+        this.exchangeRegistry = exchangeRegistry;
         this.ordersRegistry = ordersRegistry;
     }
 
+    @Override
     public void process(final JsonObject message) {
         final Modification modification = Modification.fromMessage(message);
-
-        System.out.println(Thread.currentThread().getName()+ " - " +modification); //FIXME
 
         final int modifiedOrderId = modification.getModifiedOrderId();
         final Order order = ordersRegistry.get(modifiedOrderId);
 
         final String product = order.getProduct();
 
-        final ProductRegistry productRegistry = ordersLog.getProductRegistryForProduct(product);
+        final ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct(product);
         productRegistry.doWithLock(() -> {
-            if (order.getOrderSide() == OrderSide.BUY) {
+            if (order.getSide() == Side.BUY) {
                 modifyOrderInQueue(modification, productRegistry.getBuyOrders());
             } else {
                 modifyOrderInQueue(modification, productRegistry.getSellOrders());
@@ -44,12 +44,13 @@ public class ModificationProcessor {
     }
 
     private void modifyOrderInQueue(final Modification modification, final PriorityQueue<Order> ordersQueue) {
+        ordersQueue.stream()
+            .filter(order -> modificationCanBeApplied(order, modification))
+            .findFirst()
+            .ifPresent(order -> doModifyOrderInQueue(order, modification, ordersQueue));
+    }
 
-        final Order modifiedOrder = ordersQueue.stream()
-                .filter(o -> o.getId() == modification.getModifiedOrderId())
-                .findFirst()
-                .get();
-
+    private void doModifyOrderInQueue(final Order modifiedOrder, final Modification modification, final PriorityQueue<Order> ordersQueue) {
         if (modification.getNewPrice() != modifiedOrder.getPrice()) {
             ordersQueue.remove(modifiedOrder); // we should reinsert the order to alter order in the queue
             modifiedOrder.modify(modification);
@@ -62,5 +63,9 @@ public class ModificationProcessor {
             // there is no need to reinsert the order
             modifiedOrder.modify(modification);
         }
+    }
+
+    private boolean modificationCanBeApplied(final Order order, final Modification modification) {
+        return order.getId() == modification.getModifiedOrderId() && order.getBroker().equals(modification.getBroker());
     }
 }

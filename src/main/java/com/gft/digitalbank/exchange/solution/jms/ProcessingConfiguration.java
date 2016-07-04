@@ -2,7 +2,7 @@ package com.gft.digitalbank.exchange.solution.jms;
 
 import com.gft.digitalbank.exchange.solution.Jndi;
 import com.gft.digitalbank.exchange.solution.Spring;
-import com.gft.digitalbank.exchange.solution.dataStructures.OrdersLog;
+import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
 import com.gft.digitalbank.exchange.solution.message.Order;
 import com.gft.digitalbank.exchange.solution.processing.BuySellOrderProcessor;
 import com.gft.digitalbank.exchange.solution.processing.CancellationProcessor;
@@ -30,8 +30,8 @@ public class ProcessingConfiguration {
     }
 
     @Bean
-    public OrdersLog ordersLog() {
-        return new OrdersLog();
+    public ExchangeRegistry ordersLog() {
+        return new ExchangeRegistry();
     }
 
     @Bean

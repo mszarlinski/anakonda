@@ -1,11 +1,21 @@
 package com.gft.digitalbank.exchange.solution.jms;
 
-import com.google.gson.JsonObject;
+import java.util.concurrent.CountDownLatch;
+
+import javax.jms.Connection;
+import javax.jms.JMSException;
+import javax.jms.Message;
+import javax.jms.MessageConsumer;
+import javax.jms.MessageListener;
+import javax.jms.Queue;
+import javax.jms.Session;
+import javax.jms.TextMessage;
+
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import javax.jms.*;
-import java.util.concurrent.CountDownLatch;
+import com.gft.digitalbank.exchange.model.orders.MessageType;
+import com.google.gson.JsonObject;
 
 /**
  * @author mszarlinski on 2016-06-30.
@@ -54,19 +64,12 @@ public class MessageProcessingTask implements MessageListener {
     public void onMessage(final Message message) {
         if (message instanceof TextMessage) {
             final JsonObject messageObj = messageDeserializer.deserialize((TextMessage) message);
-            final String messageType = messageObj.get("messageType").getAsString();
+            final MessageType messageType = MessageType.valueOf(messageObj.get("messageType").getAsString());
 
-            switch (messageType) {
-                case "SHUTDOWN_NOTIFICATION":
-                    processShutdownNotification();
-                    break;
-                case "ORDER":
-                case "MODIFICATION":
-                case "CANCEL":
-                    messageProcessingDispatcher.process(messageObj);
-                    break;
-                default:
-                    throw new IllegalArgumentException("Unknown message type: " + messageType);
+            if (messageType == MessageType.SHUTDOWN_NOTIFICATION) {
+                processShutdownNotification();
+            } else {
+                messageProcessingDispatcher.process(messageObj);
             }
         } else {
             throw new IllegalArgumentException("Unsupported message class: " + message.getClass().getName());

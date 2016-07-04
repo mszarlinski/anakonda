@@ -3,9 +3,9 @@ package com.gft.digitalbank.exchange.solution;
 import lombok.SneakyThrows;
 
 import javax.naming.Context;
-import javax.naming.NamingException;
 
 /**
+ * TODO: JNDI by Spring?
  * @author mszarlinski on 2016-06-28.
  */
 public class Jndi {
@@ -17,13 +17,9 @@ public class Jndi {
     }
 
     @SuppressWarnings("unchecked")
-//    @SneakyThrows
+    @SneakyThrows
     public <T> T lookup(final String name) {
-        try {
-            return (T) context.lookup(name);
-        } catch (NamingException e) {
-            e.printStackTrace();
-        }
-        return null;
+        return (T) context.lookup(name);
+
     }
 }

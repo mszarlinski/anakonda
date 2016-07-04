@@ -1,56 +1,60 @@
 package com.gft.digitalbank.exchange.solution.processing;
 
-import com.gft.digitalbank.exchange.solution.dataStructures.OrdersLog;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentMap;
+
+import com.gft.digitalbank.exchange.model.orders.Side;
+import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
 import com.gft.digitalbank.exchange.solution.dataStructures.ProductRegistry;
 import com.gft.digitalbank.exchange.solution.message.Cancellation;
 import com.gft.digitalbank.exchange.solution.message.Order;
-import com.gft.digitalbank.exchange.solution.message.OrderSide;
 import com.google.gson.JsonObject;
-
-import java.util.Map;
-import java.util.Queue;
-import java.util.concurrent.ConcurrentMap;
 
 /**
  * @author mszarlinski on 2016-07-01.
  */
-public class CancellationProcessor {
+public class CancellationProcessor implements MessageProcessor {
 
-    private final OrdersLog ordersLog;
+    private final ExchangeRegistry exchangeRegistry;
+
     private final ConcurrentMap<Integer, Order> ordersRegistry;
 
-    public CancellationProcessor(final OrdersLog ordersLog, final ConcurrentMap<Integer, Order> ordersRegistry) {
-        this.ordersLog = ordersLog;
+    public CancellationProcessor(final ExchangeRegistry exchangeRegistry, final ConcurrentMap<Integer, Order> ordersRegistry) {
+        this.exchangeRegistry = exchangeRegistry;
         this.ordersRegistry = ordersRegistry;
     }
 
+    @Override
     public void process(final JsonObject message) {
         final Cancellation cancellation = Cancellation.fromMessage(message);
-
-        System.out.println(Thread.currentThread().getName()+ " - " +cancellation); //FIXME
 
         final int cancelledOrderId = cancellation.getCancelledOrderId();
         final Order order = ordersRegistry.get(cancelledOrderId);
         final String product = order.getProduct();
 
-        final ProductRegistry productRegistry = ordersLog.getProductRegistries().get(product);
+        final ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct(product);
 
         productRegistry.doWithLock(() -> {
-            if (order.getOrderSide() == OrderSide.BUY) {
-                cancelOrderInQueue(cancelledOrderId, productRegistry.getBuyOrders());
+            if (order.getSide() == Side.BUY) {
+                cancelOrderInQueue(cancellation, productRegistry.getBuyOrders());
             } else {
-                cancelOrderInQueue(cancelledOrderId, productRegistry.getSellOrders());
+                cancelOrderInQueue(cancellation, productRegistry.getSellOrders());
             }
         });
     }
 
-    private void cancelOrderInQueue(final int cancelledOrderId, final Queue<Order> ordersQueue) {
+    private void cancelOrderInQueue(final Cancellation cancellation, final Queue<Order> ordersQueue) {
         ordersQueue.stream()
-                .filter(o -> o.getId() == cancelledOrderId)
-                .findFirst()
-                .ifPresent(ordersQueue::remove);
+            .filter(o -> cancelCanBeApplied(o, cancellation))
+            .findFirst()
+            .ifPresent(o -> {
+                ordersQueue.remove(o);
+                ordersRegistry.remove(cancellation.getCancelledOrderId());
+            });
+    }
 
-        ordersRegistry.remove(cancelledOrderId);
+    private boolean cancelCanBeApplied(final Order order, final Cancellation cancellation) {
+        return order.getId() == cancellation.getCancelledOrderId() && order.getBroker().equals(cancellation.getBroker());
     }
 }
 

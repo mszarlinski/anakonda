@@ -17,4 +17,5 @@ class MessageDeserializer {
     JsonObject deserialize(final TextMessage message) {
         return jsonParser.parse(message.getText()).getAsJsonObject();
     }
+    //TODO: może jednak static typed ?
 }
