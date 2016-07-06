@@ -36,32 +36,28 @@ public class ModificationProcessor implements MessageProcessor {
         final ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct(product);
         productRegistry.doWithLock(() -> {
             if (order.getSide() == Side.BUY) {
-                modifyOrderInQueue(modification, productRegistry.getBuyOrders());
+                modifyOrderInQueue(modification, productRegistry.getBuyOrders(), productRegistry);
             } else {
-                modifyOrderInQueue(modification, productRegistry.getSellOrders());
+                modifyOrderInQueue(modification, productRegistry.getSellOrders(), productRegistry);
             }
         });
     }
 
-    private void modifyOrderInQueue(final Modification modification, final PriorityQueue<Order> ordersQueue) {
+    private void modifyOrderInQueue(final Modification modification, final PriorityQueue<Order> ordersQueue, final ProductRegistry productRegistry) {
         ordersQueue.stream()
-            .filter(order -> modificationCanBeApplied(order, modification))
+            .filter(order -> modificationCanBeApplied(order, modification) && modification.willModifyOrder(order))
             .findFirst()
-            .ifPresent(order -> doModifyOrderInQueue(order, modification, ordersQueue));
+            .ifPresent(order -> doModifyOrderInQueue(order, modification, ordersQueue, productRegistry));
     }
 
-    private void doModifyOrderInQueue(final Order modifiedOrder, final Modification modification, final PriorityQueue<Order> ordersQueue) {
-        if (modification.getNewPrice() != modifiedOrder.getPrice()) {
-            ordersQueue.remove(modifiedOrder); // we should reinsert the order to alter order in the queue
-            modifiedOrder.modify(modification);
-            if (modifiedOrder.getAmount() > 0) {
-                ordersQueue.add(modifiedOrder);
-            } else {
-                ordersRegistry.remove(modification.getModifiedOrderId());
-            }
+    private void doModifyOrderInQueue(final Order modifiedOrder, final Modification modification, final PriorityQueue<Order> ordersQueue, final ProductRegistry productRegistry) {
+        ordersQueue.remove(modifiedOrder);
+        modifiedOrder.modify(modification);
+
+        if (modifiedOrder.getAmount() > 0) {
+            productRegistry.addOrderToRegistry(modifiedOrder, ordersRegistry); // reinsert modified order
         } else {
-            // there is no need to reinsert the order
-            modifiedOrder.modify(modification);
+            ordersRegistry.remove(modifiedOrder.getId()); // forget about order
         }
     }
 

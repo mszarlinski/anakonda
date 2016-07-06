@@ -31,6 +31,8 @@ public class FunctionalTest {
 
     private String broker = "Broker";
 
+    private String client = "Client";
+
     @Before
     public void reloadBeans() {
         new AnnotationConfigApplicationContext(ProcessingConfiguration.class, JmsConfiguration.class);
@@ -44,8 +46,8 @@ public class FunctionalTest {
     @Test
     public void buy_order_should_reduce_sell_order_with_lower_price() {
         // given
-        JsonObject sellMessage = MessageFactory.createSellMessage(1, product, 10, 1000, 1, broker);
-        JsonObject buyMessage = MessageFactory.createBuyMessage(2, product, 3, 2000, 1, broker);
+        JsonObject sellMessage = MessageFactory.createSellMessage(1, product, 10, 1000, 1, broker, client);
+        JsonObject buyMessage = MessageFactory.createBuyMessage(2, product, 3, 2000, 1, broker, client);
 
         // when
         messageProcessingDispatcher.process(sellMessage);
@@ -73,8 +75,8 @@ public class FunctionalTest {
     public void buy_order_should_not_match_sell_order_with_higher_price() {
         // given
         String product = "A";
-        JsonObject sellMessage = MessageFactory.createSellMessage(1, product, 10, 2000, 1, broker);
-        JsonObject buyMessage = MessageFactory.createBuyMessage(2, product, 3, 1000, 1, broker);
+        JsonObject sellMessage = MessageFactory.createSellMessage(1, product, 10, 2000, 1, broker, client);
+        JsonObject buyMessage = MessageFactory.createBuyMessage(2, product, 3, 1000, 1, broker, client);
 
         // when
         messageProcessingDispatcher.process(sellMessage);
@@ -102,8 +104,8 @@ public class FunctionalTest {
     public void buy_order_should_fully_compensate_sell_order_with_lower_price() {
         // given
         String product = "A";
-        JsonObject sellMessage = MessageFactory.createSellMessage(1, product, 3, 1000, 1, broker);
-        JsonObject buyMessage = MessageFactory.createBuyMessage(2, product, 10, 2000, 1, broker);
+        JsonObject sellMessage = MessageFactory.createSellMessage(1, product, 3, 1000, 1, broker, client);
+        JsonObject buyMessage = MessageFactory.createBuyMessage(2, product, 10, 2000, 1, broker, client);
 
         // when
         messageProcessingDispatcher.process(sellMessage);
@@ -131,8 +133,8 @@ public class FunctionalTest {
     public void sell_order_should_reduce_buy_order_with_higher_price() {
         // given
         String product = "A";
-        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 2000, 1, broker);
-        JsonObject sellMessage = MessageFactory.createSellMessage(2, product, 3, 1000, 1, broker);
+        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 2000, 1, broker, client);
+        JsonObject sellMessage = MessageFactory.createSellMessage(2, product, 3, 1000, 1, broker, client);
 
         // when
         messageProcessingDispatcher.process(buyMessage);
@@ -160,8 +162,8 @@ public class FunctionalTest {
     public void sell_order_should_not_match_buy_order_with_lower_price() {
         // given
         String product = "A";
-        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 1000, 1, broker);
-        JsonObject sellMessage = MessageFactory.createSellMessage(2, product, 3, 2000, 1, broker);
+        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 1000, 1, broker, client);
+        JsonObject sellMessage = MessageFactory.createSellMessage(2, product, 3, 2000, 1, broker, client);
 
         // when
         messageProcessingDispatcher.process(buyMessage);
@@ -189,8 +191,8 @@ public class FunctionalTest {
     public void sell_order_should_fully_compensate_buy_order_with_higher_price() {
         // given
         String product = "A";
-        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 2, 2000, 1, broker);
-        JsonObject sellMessage = MessageFactory.createSellMessage(2, product, 11, 1000, 1, broker);
+        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 2, 2000, 1, broker, client);
+        JsonObject sellMessage = MessageFactory.createSellMessage(2, product, 11, 1000, 1, broker, client);
 
         // when
         messageProcessingDispatcher.process(buyMessage);
@@ -221,13 +223,13 @@ public class FunctionalTest {
         // given
         String product = "A";
         List<JsonObject> buyMessages = asList(
-            MessageFactory.createBuyMessage(1, product, 10, 500, 1, broker),
-            MessageFactory.createBuyMessage(2, product, 10, 2000, 1, broker),
-            MessageFactory.createBuyMessage(3, product, 5, 1500, 1, broker),
-            MessageFactory.createBuyMessage(4, product, 3, 1200, 1, broker),
-            MessageFactory.createBuyMessage(5, product, 10, 1200, 2, broker));
+            MessageFactory.createBuyMessage(1, product, 10, 500, 1, broker, client),
+            MessageFactory.createBuyMessage(2, product, 10, 2000, 1, broker, client),
+            MessageFactory.createBuyMessage(3, product, 5, 1500, 1, broker, client),
+            MessageFactory.createBuyMessage(4, product, 3, 1200, 1, broker, client),
+            MessageFactory.createBuyMessage(5, product, 10, 1200, 2, broker, client));
 
-        JsonObject sellMessage = MessageFactory.createSellMessage(6, product, 20, 1000, 5, broker);
+        JsonObject sellMessage = MessageFactory.createSellMessage(6, product, 20, 1000, 5, broker, client);
 
         // when
         buyMessages.forEach(messageProcessingDispatcher::process);
@@ -266,14 +268,14 @@ public class FunctionalTest {
         // given
         String product = "A";
 
-        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 2000, 5, broker);
+        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 2000, 5, broker, client);
 
         List<JsonObject> sellMessages = asList(
-            MessageFactory.createSellMessage(2, product, 2, 2000, 1, broker),
-            MessageFactory.createSellMessage(3, product, 3, 3000, 1, broker),
-            MessageFactory.createSellMessage(4, product, 2, 1000, 2, broker),
-            MessageFactory.createSellMessage(5, product, 1, 500, 1, broker),
-            MessageFactory.createSellMessage(6, product, 2, 1000, 1, broker)
+            MessageFactory.createSellMessage(2, product, 2, 2000, 1, broker, client),
+            MessageFactory.createSellMessage(3, product, 3, 3000, 1, broker, client),
+            MessageFactory.createSellMessage(4, product, 2, 1000, 2, broker, client),
+            MessageFactory.createSellMessage(5, product, 1, 500, 1, broker, client),
+            MessageFactory.createSellMessage(6, product, 2, 1000, 1, broker, client)
         );
 
         // when
@@ -310,8 +312,8 @@ public class FunctionalTest {
     public void modification_should_modify_given_order_and_change_ordering() {
         // given
         String product = "A";
-        JsonObject sellMessage1 = MessageFactory.createSellMessage(1, product, 10, 500, 1, broker);
-        JsonObject sellMessage2 = MessageFactory.createSellMessage(2, product, 10, 1000, 2, broker);
+        JsonObject sellMessage1 = MessageFactory.createSellMessage(1, product, 10, 500, 1, broker, client);
+        JsonObject sellMessage2 = MessageFactory.createSellMessage(2, product, 10, 1000, 2, broker, client);
         JsonObject modificationMessage = MessageFactory.createModificationMessage(2, 5, 200, 3, broker);
 
         // when
@@ -337,8 +339,8 @@ public class FunctionalTest {
     public void cancel_should_cancel_given_order() {
         // given
         String product = "A";
-        JsonObject sellMessage1 = MessageFactory.createSellMessage(1, product, 10, 500, 1, broker);
-        JsonObject sellMessage2 = MessageFactory.createSellMessage(2, product, 10, 1000, 2, broker);
+        JsonObject sellMessage1 = MessageFactory.createSellMessage(1, product, 10, 500, 1, broker, client);
+        JsonObject sellMessage2 = MessageFactory.createSellMessage(2, product, 10, 1000, 2, broker, client);
         JsonObject cancelMessage = MessageFactory.createCancelMessage(2, 3, broker);
 
         // when
@@ -357,7 +359,7 @@ public class FunctionalTest {
     public void modification_should_remove_order_when_amount_changed_to_zero() {
         // given
         String product = "A";
-        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 1000, 1, broker);
+        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 1000, 1, broker, client);
         JsonObject modificationMessage = MessageFactory.createModificationMessage(1, 0, 500, 2, broker);
 
         // when
@@ -374,7 +376,7 @@ public class FunctionalTest {
     public void modification_should_be_sent_by_the_same_broker() {
         // given
         String product = "A";
-        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 1000, 1, "Broker1");
+        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 1000, 1, "Broker1", client);
         JsonObject modificationMessage = MessageFactory.createModificationMessage(1, 5, 500, 2, "Broker2");
 
         // when
@@ -395,7 +397,7 @@ public class FunctionalTest {
     public void cancel_should_be_sent_by_the_same_broker() {
         // given
         String product = "A";
-        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 1000, 1, "Broker1");
+        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 1000, 1, "Broker1", client);
         JsonObject cancelMessage = MessageFactory.createCancelMessage(1, 2, "Broker2");
 
         // when
@@ -412,8 +414,8 @@ public class FunctionalTest {
     public void modified_order_should_be_reprocessed() {
         // given
         String product = "A";
-        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 500, 1, broker);
-        JsonObject sellMessage = MessageFactory.createSellMessage(2, product, 10, 1000, 2, broker);
+        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 500, 1, broker, client);
+        JsonObject sellMessage = MessageFactory.createSellMessage(2, product, 10, 1000, 2, broker, client);
 
         // when
         messageProcessingDispatcher.process(buyMessage);
@@ -436,11 +438,7 @@ public class FunctionalTest {
             assertThat(order.getPrice()).isEqualTo(500);
         });
 
-        assertThat(productRegistry.getSellOrders()).hasOnlyOneElementSatisfying(order -> {
-            assertThat(order.getId()).isEqualTo(2);
-            assertThat(order.getAmount()).isEqualTo(5);
-            assertThat(order.getPrice()).isEqualTo(200);
-        });
+        assertThat(productRegistry.getSellOrders()).isEmpty();
 
         assertThat(productRegistry.getTransactions()).hasOnlyOneElementSatisfying(tx -> {
             assertThat(tx.getAmount()).isEqualTo(5);

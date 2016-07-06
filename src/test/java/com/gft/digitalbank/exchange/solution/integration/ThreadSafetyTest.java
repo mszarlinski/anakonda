@@ -16,6 +16,7 @@ import org.junit.Before;
 import org.junit.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import com.gft.digitalbank.exchange.solution.MessageFactory;
 import com.gft.digitalbank.exchange.solution.Spring;
 import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
 import com.gft.digitalbank.exchange.solution.jms.JmsConfiguration;
@@ -30,7 +31,7 @@ public class ThreadSafetyTest {
 
     private static final int NUM_OF_THREADS = 100;
 
-    private static final int NUM_OF_ORDERS = 10;
+    private static final int NUM_OF_ITERATIONS = 10;
 
     private MessageProcessingDispatcher messageProcessingDispatcher;
 
@@ -41,8 +42,7 @@ public class ThreadSafetyTest {
     private Random random = new Random();
 
     @Before
-    public void createBeans() {
-        //TODO: spring-test
+    public void reloadBeans() {
         new AnnotationConfigApplicationContext(ProcessingConfiguration.class, JmsConfiguration.class);
 
         messageProcessingDispatcher = Spring.getBean(MessageProcessingDispatcher.class);
@@ -50,11 +50,21 @@ public class ThreadSafetyTest {
     }
 
     @Test
-    public void buyAndModifyOnSingleProduct() {
-        runOperations((orderId, operationNo) -> {
-//            buy(orderId, "A", 10, 10, operationNo);
-//            modify(orderId, 10, 5, operationNo);
-        });
+    public void buyAndSellOnSingleProduct() {
+        final List<CompletableFuture<Void>> futures = range(0, 100)
+            .mapToObj(threadNo -> CompletableFuture.runAsync(() -> range(0, 10)
+                .forEach(orderNo -> {
+                    final int orderId = random.nextInt(1000);
+                    messageProcessingDispatcher.process(MessageFactory.createBuyMessage(orderId, "A", 50, 1000, threadNo, "br1", "cl1"));
+                    messageProcessingDispatcher.process(MessageFactory.createSellMessage(orderId, "A", 50, 500, threadNo, "br1", "cl1"));
+                }), executorService))
+            .collect(toList());
+
+        try {
+            CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).get();
+        } catch (Exception ex) {
+            Throwables.propagate(ex);
+        }
 
         assertThat(exchangeRegistry)
             .hasBookedOrders();
@@ -91,7 +101,7 @@ public class ThreadSafetyTest {
 
     private void runOperations(BiConsumer<Integer, Integer> operation) {
         final List<CompletableFuture<Void>> futures = range(0, NUM_OF_THREADS)
-            .mapToObj(threadNo -> CompletableFuture.runAsync(() -> range(0, NUM_OF_ORDERS)
+            .mapToObj(threadNo -> CompletableFuture.runAsync(() -> range(0, NUM_OF_ITERATIONS)
                 .forEach(orderNo -> operation.accept(random.nextInt(1_000_000), orderNo)), executorService))
             .collect(toList());
 

@@ -26,15 +26,15 @@ public class MessageFactory {
         return message;
     }
 
-    public static JsonObject createBuyMessage(int orderId, String product, int amount, int price, int timestamp, String broker) {
-        return createOrderMessage(orderId, product, amount, price, timestamp, broker, Side.BUY);
+    public static JsonObject createBuyMessage(int orderId, String product, int amount, int price, int timestamp, String broker, String client) {
+        return createOrderMessage(orderId, product, amount, price, timestamp, broker, client, Side.BUY);
     }
 
-    public static JsonObject createSellMessage(int orderId, String product, int amount, int price, int timestamp, String broker) {
-        return createOrderMessage(orderId, product, amount, price, timestamp, broker, Side.SELL);
+    public static JsonObject createSellMessage(int orderId, String product, int amount, int price, int timestamp, String broker, String client) {
+        return createOrderMessage(orderId, product, amount, price, timestamp, broker, client, Side.SELL);
     }
 
-    private static JsonObject createOrderMessage(int orderId, String product, int amount, int price, int timestamp, String broker, Side side) {
+    private static JsonObject createOrderMessage(int orderId, String product, int amount, int price, int timestamp, String broker, String client, Side side) {
         JsonObject message = new JsonObject();
         message.addProperty("id", orderId);
         message.addProperty("messageType", MessageType.ORDER.toString());
@@ -42,6 +42,7 @@ public class MessageFactory {
         message.addProperty("product", product);
         message.addProperty("timestamp", timestamp);
         message.addProperty("broker", broker);
+        message.addProperty("client", client);
 
         JsonObject details = new JsonObject();
         details.addProperty("amount", amount);

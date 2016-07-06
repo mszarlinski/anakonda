@@ -33,4 +33,8 @@ public class Modification {
             .broker(message.get("broker").getAsString())
             .build();
     }
+
+    public boolean willModifyOrder(final Order order) {
+        return order.getAmount() != newAmount && order.getPrice() != newPrice;
+    }
 }
