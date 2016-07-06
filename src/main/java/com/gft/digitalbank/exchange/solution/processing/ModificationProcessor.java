@@ -31,6 +31,12 @@ public class ModificationProcessor implements MessageProcessor {
         final int modifiedOrderId = modification.getModifiedOrderId();
         final Order order = ordersRegistry.get(modifiedOrderId);
 
+        if (order != null) {
+            processOrder(modification, order);
+        }
+    }
+
+    private void processOrder(final Modification modification, final Order order) {
         final String product = order.getProduct();
 
         final ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct(product);

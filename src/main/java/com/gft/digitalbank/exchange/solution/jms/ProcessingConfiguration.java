@@ -78,7 +78,7 @@ public class ProcessingConfiguration {
 
     @Bean
     @Scope("prototype")
-    public MessageProcessingTask messageProcessingTask(MessageDeserializer messageDeserializer, MessageProcessingDispatcher messageProcessingDispatcher) {
-        return new MessageProcessingTask(messageDeserializer, messageProcessingDispatcher);
+    public ExchangeMessageListener messageProcessingTask(MessageDeserializer messageDeserializer, MessageProcessingDispatcher messageProcessingDispatcher) {
+        return new ExchangeMessageListener(messageDeserializer, messageProcessingDispatcher);
     }
 }

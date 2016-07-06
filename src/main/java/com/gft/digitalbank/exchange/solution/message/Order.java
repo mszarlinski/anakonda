@@ -20,7 +20,7 @@ public class Order {
 
     private int price;
 
-    private final long timestamp;
+    private long timestamp;
 
     private final String product;
 
@@ -47,11 +47,12 @@ public class Order {
     public void modify(final Modification modification) {
         this.amount = modification.getNewAmount();
         this.price = modification.getNewPrice();
+        this.timestamp = modification.getTimestamp();
     }
 
-    public OrderEntry toOrderEntry() {
+    public OrderEntry toOrderEntry(final int position) {
         return OrderEntry.builder()
-            .id(id)
+            .id(position)
             .broker(broker)
             .amount(amount)
             .client(client)

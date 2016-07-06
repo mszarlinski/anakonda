@@ -29,12 +29,12 @@ public class Modification {
             .modifiedOrderId(message.get("modifiedOrderId").getAsInt())
             .timestamp(message.get("timestamp").getAsInt())
             .newAmount(details.get("amount").getAsInt())
-            .newPrice(message.get("price").getAsInt())
+            .newPrice(details.get("price").getAsInt())
             .broker(message.get("broker").getAsString())
             .build();
     }
 
     public boolean willModifyOrder(final Order order) {
-        return order.getAmount() != newAmount && order.getPrice() != newPrice;
+        return order.getAmount() != newAmount || order.getPrice() != newPrice;
     }
 }

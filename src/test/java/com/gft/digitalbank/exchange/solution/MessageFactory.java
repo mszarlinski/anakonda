@@ -13,8 +13,6 @@ public class MessageFactory {
         JsonObject message = new JsonObject();
         message.addProperty("modifiedOrderId", orderId);
         message.addProperty("messageType", MessageType.MODIFICATION.toString());
-        message.addProperty("amount", amount);
-        message.addProperty("price", price);
         message.addProperty("timestamp", timestamp);
         message.addProperty("broker", broker);
 

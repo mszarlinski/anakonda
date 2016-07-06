@@ -12,12 +12,12 @@ public class TransactionGenerator {
 
     private final AtomicInteger transactionId = new AtomicInteger(0);
 
-    public Transaction generatorTransaction(final Order buyOrder, final Order sellOrder, final int amount, final String product) {
+    public Transaction generatorTransaction(final Order buyOrder, final Order sellOrder, final int amount, final int matchedOrderPrice, final String product) {
 
         return Transaction.builder()
             .id(transactionId.incrementAndGet())
             .amount(amount)
-            .price(buyOrder.getPrice())
+            .price(matchedOrderPrice)
             .product(product)
             .clientBuy(buyOrder.getClient())
             .clientSell(sellOrder.getClient())

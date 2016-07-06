@@ -11,9 +11,9 @@ import java.util.PriorityQueue;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.BiFunction;
-import java.util.stream.Collectors;
 
 import com.gft.digitalbank.exchange.model.OrderBook;
+import com.gft.digitalbank.exchange.model.OrderEntry;
 import com.gft.digitalbank.exchange.model.Transaction;
 import com.gft.digitalbank.exchange.model.orders.Side;
 import com.gft.digitalbank.exchange.solution.message.Order;
@@ -83,32 +83,34 @@ public class ProductRegistry implements Lockable {
 
             while (!counterQueue.isEmpty() && amountLeft > 0) {
 
-                final Order counterOrder = counterQueue.peek();
+                final Order matchedOrder = counterQueue.peek();
 
-                if (priceCondition.compare(counterOrder.getPrice(), order.getPrice()) < 0) {
+                if (priceCondition.compare(matchedOrder.getPrice(), order.getPrice()) < 0) {
                     break;
                 }
 
-                if (amountLeft < counterOrder.getAmount()) {
-                    counterOrder.setAmount(counterOrder.getAmount() - amountLeft);
+                if (amountLeft < matchedOrder.getAmount()) {
+                    matchedOrder.setAmount(matchedOrder.getAmount() - amountLeft);
 
                     transactions.add(transactionGenerator.generatorTransaction(
-                        buyOrderSelector.apply(order, counterOrder),
-                        sellOrderSelector.apply(order, counterOrder),
+                        buyOrderSelector.apply(order, matchedOrder),
+                        sellOrderSelector.apply(order, matchedOrder),
                         amountLeft,
+                        matchedOrder.getPrice(),
                         order.getProduct()));
 
                     amountLeft = 0;
                 } else {
                     // whole counter order has been used
-                    amountLeft -= counterOrder.getAmount();
+                    amountLeft -= matchedOrder.getAmount();
                     counterQueue.remove();
-                    ordersRegistry.remove(counterOrder.getId());
+                    ordersRegistry.remove(matchedOrder.getId());
 
                     transactions.add(transactionGenerator.generatorTransaction(
-                        buyOrderSelector.apply(order, counterOrder),
-                        sellOrderSelector.apply(order, counterOrder),
-                        counterOrder.getAmount(),
+                        buyOrderSelector.apply(order, matchedOrder),
+                        sellOrderSelector.apply(order, matchedOrder),
+                        matchedOrder.getAmount(),
+                        matchedOrder.getPrice(),
                         order.getProduct()));
                 }
             }
@@ -124,17 +126,22 @@ public class ProductRegistry implements Lockable {
     public OrderBook toOrderBook() {
         return OrderBook.builder()
             .product(product)
-            .buyEntries(buyOrders.stream()
-                .map(Order::toOrderEntry)
-                .collect(Collectors.toList()))
-            .sellEntries(sellOrders.stream()
-                .map(Order::toOrderEntry)
-                .collect(Collectors.toList()))
+            .buyEntries(convertToOrderEntries(buyOrders))
+            .sellEntries(convertToOrderEntries(sellOrders))
             .build();
     }
 
+    private List<OrderEntry> convertToOrderEntries(final PriorityQueue<Order> orders) {
+        int position = 1;
+        final List<OrderEntry> orderEntries = new ArrayList<>(orders.size());
+        while (!orders.isEmpty()) {
+            orderEntries.add(orders.poll().toOrderEntry(position++));
+        }
+        return orderEntries;
+    }
+
     // FIXME: moga tutaj byc transactions - wyniesienie do ExchangeRegistry?
-    public boolean isEmpty() {
-        return buyOrders.isEmpty() && sellOrders.isEmpty();
+    public boolean isNotEmpty() {
+        return !buyOrders.isEmpty() || !sellOrders.isEmpty();
     }
 }

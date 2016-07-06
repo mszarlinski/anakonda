@@ -66,7 +66,7 @@ public class FunctionalTest {
 
         assertThat(productRegistry.getTransactions()).hasOnlyOneElementSatisfying(transaction -> {
             assertThat(transaction.getAmount()).isEqualTo(3);
-            assertThat(transaction.getPrice()).isEqualTo(2000);
+            assertThat(transaction.getPrice()).isEqualTo(1000);
             assertThat(transaction.getProduct()).isEqualTo(product);
         });
     }
@@ -124,7 +124,7 @@ public class FunctionalTest {
 
         assertThat(productRegistry.getTransactions()).hasOnlyOneElementSatisfying(transaction -> {
             assertThat(transaction.getAmount()).isEqualTo(3);
-            assertThat(transaction.getPrice()).isEqualTo(2000);
+            assertThat(transaction.getPrice()).isEqualTo(1000);
             assertThat(transaction.getProduct()).isEqualTo(product);
         });
     }
@@ -303,7 +303,7 @@ public class FunctionalTest {
             .containsExactly(1, 2, 2, 2);
         assertThat(productRegistry.getTransactions())
             .extracting("price")
-            .containsExactly(2000, 2000, 2000, 2000);
+            .containsExactly(500, 1000, 1000, 2000);
     }
 
     // MODIFICATION & CANCEL
@@ -336,6 +336,51 @@ public class FunctionalTest {
     }
 
     @Test
+    public void modification_should_modify_order_timestamp() {
+        // given
+        String product = "A";
+        JsonObject sellMessage = MessageFactory.createSellMessage(1, product, 10, 1000, 1, broker, client);
+        JsonObject modificationMessage = MessageFactory.createModificationMessage(1, 10, 100, 99, broker);
+
+        // when
+        messageProcessingDispatcher.process(sellMessage);
+        messageProcessingDispatcher.process(modificationMessage);
+
+        // then
+        ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct(product);
+
+        assertThat(productRegistry.getSellOrders()).hasOnlyOneElementSatisfying(order ->
+            assertThat(order.getTimestamp()).isEqualTo(99));
+    }
+
+    @Test
+    public void modification_should_not_modify_order_timestamp_if_not_updated() {
+        // given
+        String product = "A";
+        JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 1000, 1, broker, client);
+        JsonObject modificationMessage = MessageFactory.createModificationMessage(1, 10, 1000, 99, broker);
+
+        // when
+        messageProcessingDispatcher.process(buyMessage);
+        messageProcessingDispatcher.process(modificationMessage);
+
+        // then
+        ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct(product);
+
+        assertThat(productRegistry.getBuyOrders()).hasOnlyOneElementSatisfying(order ->
+            assertThat(order.getTimestamp()).isEqualTo(1));
+    }
+
+    @Test
+    public void should_fail_silently_when_order_to_be_modified_not_found() {
+        // given
+        JsonObject modificationMessage = MessageFactory.createModificationMessage(1, 10, 1000, 1, broker);
+
+        // when
+        messageProcessingDispatcher.process(modificationMessage);
+    }
+
+    @Test
     public void cancel_should_cancel_given_order() {
         // given
         String product = "A";
@@ -353,6 +398,16 @@ public class FunctionalTest {
 
         assertThat(productRegistry.getSellOrders()).hasOnlyOneElementSatisfying(order ->
             assertThat(order.getId()).isEqualTo(1));
+    }
+
+
+    @Test
+    public void should_fail_silently_when_order_to_be_cancelled_not_found() {
+        // given
+        JsonObject cancelMessage = MessageFactory.createCancelMessage(1, 1, broker);
+
+        // when
+        messageProcessingDispatcher.process(cancelMessage);
     }
 
     @Test
@@ -436,6 +491,7 @@ public class FunctionalTest {
             assertThat(order.getId()).isEqualTo(1);
             assertThat(order.getAmount()).isEqualTo(5);
             assertThat(order.getPrice()).isEqualTo(500);
+            assertThat(order.getTimestamp()).isEqualTo(1);
         });
 
         assertThat(productRegistry.getSellOrders()).isEmpty();
@@ -444,5 +500,34 @@ public class FunctionalTest {
             assertThat(tx.getAmount()).isEqualTo(5);
             assertThat(tx.getPrice()).isEqualTo(500);
         });
+    }
+
+    @Test
+    public void scenario19() {
+        // given
+        String product = "A";
+        JsonObject sellMessage1 = MessageFactory.createSellMessage(1, product, 100, 100, 1, broker, client);
+        JsonObject sellMessage2 = MessageFactory.createSellMessage(2, product, 200, 90, 2, broker, client);
+        JsonObject sellMessage3 = MessageFactory.createSellMessage(3, product, 300, 90, 3, broker, client);
+
+        JsonObject modificationMessage1 = MessageFactory.createModificationMessage(2, 1000, 90, 7, broker);
+        JsonObject modificationMessage2 = MessageFactory.createModificationMessage(2, 150, 100, 7, broker);
+        JsonObject modificationMessage3 = MessageFactory.createModificationMessage(2, 300, 101, 7, broker);
+        JsonObject modificationMessage4 = MessageFactory.createModificationMessage(2, 300, 100, 7, broker);
+
+        // when
+        messageProcessingDispatcher.process(sellMessage1);
+        messageProcessingDispatcher.process(sellMessage2);
+        messageProcessingDispatcher.process(sellMessage3);
+
+        messageProcessingDispatcher.process(modificationMessage1);
+        messageProcessingDispatcher.process(modificationMessage2);
+        messageProcessingDispatcher.process(modificationMessage3);
+        messageProcessingDispatcher.process(modificationMessage4);
+
+        // then
+        ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct(product);
+        System.out.println(productRegistry.toOrderBook());
+
     }
 }

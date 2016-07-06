@@ -20,9 +20,9 @@ import com.google.gson.JsonObject;
 /**
  * @author mszarlinski on 2016-06-30.
  */
-public class MessageProcessingTask implements MessageListener {
+public class ExchangeMessageListener implements MessageListener {
 
-    private static final Log log = LogFactory.getLog(MessageProcessingTask.class);
+    private static final Log log = LogFactory.getLog(ExchangeMessageListener.class);
 
     private static final boolean NON_TRANSACTED = false;
 
@@ -36,7 +36,7 @@ public class MessageProcessingTask implements MessageListener {
 
     private MessageConsumer messageConsumer;
 
-    public MessageProcessingTask(final MessageDeserializer messageDeserializer, final MessageProcessingDispatcher messageProcessingDispatcher) {
+    public ExchangeMessageListener(final MessageDeserializer messageDeserializer, final MessageProcessingDispatcher messageProcessingDispatcher) {
         this.messageDeserializer = messageDeserializer;
         this.messageProcessingDispatcher = messageProcessingDispatcher;
     }
@@ -63,16 +63,20 @@ public class MessageProcessingTask implements MessageListener {
     @Override
     public void onMessage(final Message message) {
         if (message instanceof TextMessage) {
-            final JsonObject messageObj = messageDeserializer.deserialize((TextMessage) message);
-            final MessageType messageType = MessageType.valueOf(messageObj.get("messageType").getAsString());
+            try {
+                final JsonObject messageObj = messageDeserializer.deserialize((TextMessage) message);
+                final MessageType messageType = MessageType.valueOf(messageObj.get("messageType").getAsString());
 
-            if (messageType == MessageType.SHUTDOWN_NOTIFICATION) {
-                processShutdownNotification();
-            } else {
-                messageProcessingDispatcher.process(messageObj);
+                if (messageType == MessageType.SHUTDOWN_NOTIFICATION) {
+                    processShutdownNotification();
+                } else {
+                    messageProcessingDispatcher.process(messageObj);
+                }
+            } catch (Exception ex) {
+                log.error("Error while processing message", ex);
             }
         } else {
-            throw new IllegalArgumentException("Unsupported message class: " + message.getClass().getName());
+            log.error("Unable to process message of class: " + message.getClass().getName());
         }
     }
 

@@ -30,6 +30,13 @@ public class CancellationProcessor implements MessageProcessor {
 
         final int cancelledOrderId = cancellation.getCancelledOrderId();
         final Order order = ordersRegistry.get(cancelledOrderId);
+
+        if (order != null) {
+            processOrder(cancellation, order);
+        }
+    }
+
+    private void processOrder(final Cancellation cancellation, final Order order) {
         final String product = order.getProduct();
 
         final ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct(product);

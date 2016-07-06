@@ -58,7 +58,7 @@ public class ExchangeRegistry implements Lockable {
 
     public List<OrderBook> extractOrderBooks() {
         return productRegistries.values().stream()
-            .filter(registry -> !registry.isEmpty())
+            .filter(ProductRegistry::isNotEmpty)
             .map(ProductRegistry::toOrderBook)
             .collect(toList());
     }

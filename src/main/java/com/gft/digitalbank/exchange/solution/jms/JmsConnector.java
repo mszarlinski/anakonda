@@ -34,7 +34,7 @@ public class JmsConnector {
 
         queues.stream() //TODO: parallel
             .forEach(queue -> {
-                final MessageProcessingTask pt = Spring.getBean(MessageProcessingTask.class);
+                final ExchangeMessageListener pt = Spring.getBean(ExchangeMessageListener.class);
                 pt.start(queue, shutdownLatch, connection);
 
             });
