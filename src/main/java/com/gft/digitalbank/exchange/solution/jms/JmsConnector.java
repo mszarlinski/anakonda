@@ -1,5 +1,7 @@
 package com.gft.digitalbank.exchange.solution.jms;
 
+import lombok.SneakyThrows;
+
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
 
@@ -32,7 +34,7 @@ public class JmsConnector {
         final Connection connection = connectionFactory.createConnection();
         connection.start();
 
-        queues.stream() //TODO: parallel
+        queues.parallelStream()
             .forEach(queue -> {
                 final ExchangeMessageListener pt = Spring.getBean(ExchangeMessageListener.class);
                 pt.start(queue, shutdownLatch, connection);
@@ -44,11 +46,8 @@ public class JmsConnector {
             .build();
     }
 
+    @SneakyThrows
     public void shutdown(final JmsContext jmsContext) {
-        try {
-            jmsContext.getConnection().close();
-        } catch (JMSException e) {
-            e.printStackTrace(); //FIXME: @SneakyThrows
-        }
+        jmsContext.getConnection().close();
     }
 }

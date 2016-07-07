@@ -5,7 +5,6 @@ import static java.util.stream.Collectors.toList;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
-import java.util.Random;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -31,17 +30,11 @@ import com.google.gson.JsonObject;
  */
 public class ThreadSafetyTest {
 
-    private static final int NUM_OF_THREADS = 100;
-
-    private static final int NUM_OF_ITERATIONS = 10;
-
     private MessageProcessingDispatcher messageProcessingDispatcher;
 
     private ExchangeRegistry exchangeRegistry;
 
-    private ExecutorService executorService = Executors.newFixedThreadPool(8);
-
-    private Random random = new Random();
+    private ExecutorService executorService = Executors.newFixedThreadPool(Runtime.getRuntime().availableProcessors());
 
     @Before
     public void reloadBeans() {
@@ -68,27 +61,30 @@ public class ThreadSafetyTest {
         );
 
         //when
-        final List<CompletableFuture<?>> futures = messages.stream().map(msg -> {
-                try {
-                    Thread.sleep(100);
-                } catch (InterruptedException e) {
-                    e.printStackTrace();
-                }
-                return CompletableFuture.runAsync(() -> messageProcessingDispatcher.process(msg), executorService);
-            }
-        )
+        final List<CompletableFuture<?>> futures = messages.stream()
+            .map(msg -> CompletableFuture.runAsync(() -> messageProcessingDispatcher.process(msg), executorService))
             .collect(toList());
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).join();
 
-        System.out.println("AFTER JOIN");
-
         // then
         final ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct("A");
         final OrderBook orderBook = productRegistry.toOrderBook();
-        assertThat(orderBook.getBuyEntries()).hasSize(1);
+        assertThat(orderBook.getBuyEntries()).hasOnlyOneElementSatisfying(entry -> {
+            assertThat(entry.getId()).isEqualTo(1);
+            assertThat(entry.getAmount()).isEqualTo(9700000);
+            assertThat(entry.getPrice()).isEqualTo(4);
+            assertThat(entry.getClient()).isEqualTo("103");
+            assertThat(entry.getBroker()).isEqualTo("1");
+        });
 
-        assertThat(orderBook.getSellEntries()).hasSize(1);
+        assertThat(orderBook.getSellEntries()).hasOnlyOneElementSatisfying(entry -> {
+            assertThat(entry.getId()).isEqualTo(1);
+            assertThat(entry.getAmount()).isEqualTo(180000000);
+            assertThat(entry.getPrice()).isEqualTo(6);
+            assertThat(entry.getClient()).isEqualTo("100");
+            assertThat(entry.getBroker()).isEqualTo("1");
+        });
 
         final List<Transaction> transactions = productRegistry.getTransactions();
         assertThat(transactions).hasSize(2);
@@ -97,16 +93,4 @@ public class ThreadSafetyTest {
         assertThat(transactions).extracting("price").containsExactly(4, 6);
 
     }
-//        public Set<Transaction> transactions () {
-//            return Sets.newHashSet(
-//                new Transaction[]{Transaction.builder().id(1).amount(300000).price(4).brokerBuy("1").brokerSell("1").clientBuy("103").clientSell("102").product("A").build(),
-//                                  Transaction.builder().id(2).amount(20000000).price(6).brokerBuy("3").brokerSell("1").clientBuy("104").clientSell("100").product("A").build()});
-//        }
-//
-//        public Set<OrderBook> orderBooks () {
-//            return Sets.newHashSet(new OrderBook[]{
-//                OrderBook.builder().product("A").sellEntry(OrderEntry.builder().id(1).amount(180000000).price(6).client("100").broker("1").build())
-//                    .buyEntry(OrderEntry.builder().id(1).amount(9700000).price(4).client("103").broker("1").build()).build()});
-//        }
-//    }
 }
