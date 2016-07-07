@@ -20,19 +20,19 @@ import com.gft.digitalbank.exchange.model.Transaction;
 public class ExchangeRegistry implements Lockable {
 
     @Getter(AccessLevel.NONE)
-    private ReentrantLock lock = new ReentrantLock(true);
+    private ReentrantLock mutex = new ReentrantLock(true);
 
     @Getter(AccessLevel.NONE)
     private ConcurrentMap<String, ProductRegistry> productRegistries = new ConcurrentHashMap<>();
 
     @Override
     public void lock() {
-        lock.lock();
+        mutex.lock();
     }
 
     @Override
     public void unlock() {
-        lock.unlock();
+        mutex.unlock();
     }
 
     public ProductRegistry getOrCreateProductRegistryForProduct(final String product) {

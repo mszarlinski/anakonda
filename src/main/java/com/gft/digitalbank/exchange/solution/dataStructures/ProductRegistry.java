@@ -35,7 +35,7 @@ public class ProductRegistry implements Lockable {
     private static final int INITIAL_CAPACITY = 11;
 
     @Getter(AccessLevel.NONE)
-    private final ReentrantLock lock = new ReentrantLock(true);
+    private final ReentrantLock mutex = new ReentrantLock(true);
 
     private final String product;
 
@@ -49,12 +49,12 @@ public class ProductRegistry implements Lockable {
 
     @Override
     public void lock() {
-        lock.lock();
+        mutex.lock();
     }
 
     @Override
     public void unlock() {
-        lock.unlock();
+        mutex.unlock();
     }
 
     public void addOrderToRegistry(final Order order, final ConcurrentMap<Integer, Order> ordersRegistry) {
