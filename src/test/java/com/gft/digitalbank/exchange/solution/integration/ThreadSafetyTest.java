@@ -1,28 +1,30 @@
 package com.gft.digitalbank.exchange.solution.integration;
 
-import static com.gft.digitalbank.exchange.solution.integration.OrdersLogAssertions.assertThat;
 import static java.util.Arrays.asList;
 import static java.util.stream.Collectors.toList;
-import static java.util.stream.IntStream.range;
+import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 import java.util.Random;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.function.BiConsumer;
 
 import org.junit.Before;
 import org.junit.Test;
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
+import com.gft.digitalbank.exchange.model.OrderBook;
+import com.gft.digitalbank.exchange.model.Transaction;
 import com.gft.digitalbank.exchange.solution.MessageFactory;
 import com.gft.digitalbank.exchange.solution.Spring;
 import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
+import com.gft.digitalbank.exchange.solution.dataStructures.ProductRegistry;
 import com.gft.digitalbank.exchange.solution.jms.JmsConfiguration;
 import com.gft.digitalbank.exchange.solution.jms.MessageProcessingDispatcher;
 import com.gft.digitalbank.exchange.solution.jms.ProcessingConfiguration;
-import com.google.common.base.Throwables;
+import com.google.gson.JsonObject;
 
 /**
  * @author mszarlinski on 2016-07-03.
@@ -37,7 +39,7 @@ public class ThreadSafetyTest {
 
     private ExchangeRegistry exchangeRegistry;
 
-    private ExecutorService executorService = Executors.newFixedThreadPool(NUM_OF_THREADS);
+    private ExecutorService executorService = Executors.newFixedThreadPool(8);
 
     private Random random = new Random();
 
@@ -50,95 +52,61 @@ public class ThreadSafetyTest {
     }
 
     @Test
-    public void buyAndSellOnSingleProduct() {
-        final List<CompletableFuture<Void>> futures = range(0, 100)
-            .mapToObj(threadNo -> CompletableFuture.runAsync(() -> range(0, 10)
-                .forEach(orderNo -> {
-                    final int orderId = random.nextInt(1000);
-                    messageProcessingDispatcher.process(MessageFactory.createBuyMessage(orderId, "A", 50, 1000, threadNo, "br1", "cl1"));
-                    messageProcessingDispatcher.process(MessageFactory.createSellMessage(orderId, "A", 50, 500, threadNo, "br1", "cl1"));
-                }), executorService))
+    public void scenario46_async() throws ExecutionException, InterruptedException {
+
+        // given
+        List<JsonObject> messages = asList(
+            MessageFactory.createSellMessage(1, "A", 1_000_000, 5, 1, "1", "100"),
+            MessageFactory.createSellMessage(2, "A", 20_000_000, 3, 2, "2", "101"),
+            MessageFactory.createSellMessage(3, "A", 300_000, 4, 3, "1", "102"),
+
+            MessageFactory.createCancelMessage(2, 4, "2"),
+            MessageFactory.createModificationMessage(1, 200_000_000, 6, 5, "1"),
+
+            MessageFactory.createBuyMessage(6, "A", 10_000_000, 4, 6, "1", "103"),
+            MessageFactory.createBuyMessage(7, "A", 20_000_000, 10, 7, "1", "104")
+        );
+
+        //when
+        final List<CompletableFuture<?>> futures = messages.stream().map(msg -> {
+                try {
+                    Thread.sleep(100);
+                } catch (InterruptedException e) {
+                    e.printStackTrace();
+                }
+                return CompletableFuture.runAsync(() -> messageProcessingDispatcher.process(msg), executorService);
+            }
+        )
             .collect(toList());
 
-        try {
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).get();
-        } catch (Exception ex) {
-            Throwables.propagate(ex);
-        }
+        CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).join();
 
-        assertThat(exchangeRegistry)
-            .hasBookedOrders();
-//            .hasNoTransactions();
+        System.out.println("AFTER JOIN");
+
+        // then
+        final ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct("A");
+        final OrderBook orderBook = productRegistry.toOrderBook();
+        assertThat(orderBook.getBuyEntries()).hasSize(1);
+
+        assertThat(orderBook.getSellEntries()).hasSize(1);
+
+        final List<Transaction> transactions = productRegistry.getTransactions();
+        assertThat(transactions).hasSize(2);
+        assertThat(transactions).extracting("id").containsExactly(1, 2);
+        assertThat(transactions).extracting("amount").containsExactly(300000, 20000000);
+        assertThat(transactions).extracting("price").containsExactly(4, 6);
+
     }
-
-    @Test
-    public void buyAndModifyOnMultipleProducts() {
-        final List<String> products = asList("0123456789".split(""));
-
-        products.forEach(p -> runOperations((orderId, operationNo) -> {
-//            buy(10 * orderId + Integer.parseInt(p), p, 10, 10, orderId);
-//            modify(10 * orderId + Integer.parseInt(p), 10, 5, orderId);
-        }));
-
-        assertThat(exchangeRegistry)
-            .hasBookedOrders();
-//            .hasNoTransactions();
-    }
-
-    @Test
-    public void buyAndSell() {
-
-        runOperations((orderId, operationNo) -> {
-//            buy(orderId, "A", 10, 10, operationNo);
-//            sell(orderId, "A", 10, 5, operationNo);
-        });
-
-        // order registry should be empty
-        assertThat(exchangeRegistry)
-            .hasBookedOrders();
-//            .hasNoTransactions();
-    }
-
-    private void runOperations(BiConsumer<Integer, Integer> operation) {
-        final List<CompletableFuture<Void>> futures = range(0, NUM_OF_THREADS)
-            .mapToObj(threadNo -> CompletableFuture.runAsync(() -> range(0, NUM_OF_ITERATIONS)
-                .forEach(orderNo -> operation.accept(random.nextInt(1_000_000), orderNo)), executorService))
-            .collect(toList());
-
-        try {
-            CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).get();
-        } catch (Exception ex) {
-            Throwables.propagate(ex);
-        }
-    }
-
-//    @Test
-//    public void sellAndBuy(int threads, int messages) {
+//        public Set<Transaction> transactions () {
+//            return Sets.newHashSet(
+//                new Transaction[]{Transaction.builder().id(1).amount(300000).price(4).brokerBuy("1").brokerSell("1").clientBuy("103").clientSell("102").product("A").build(),
+//                                  Transaction.builder().id(2).amount(20000000).price(6).brokerBuy("3").brokerSell("1").clientBuy("104").clientSell("100").product("A").build()});
+//        }
 //
-//        executorService = Executors.newFixedThreadPool(threads);
-//
-//        final List<CompletableFuture> futures = range(0, threads)
-//            .map(orderId -> CompletableFuture.supplyAsync(() -> range(0, messages)
-//                .forEach(x -> {
-//                    buy(orderId, "A", 10, 10);
-//                    sell(orderId, 10, 5);
-//                })));
-//
-//        CompletableFuture.allOf(futures).get();
-//    }
-//
-//    private void modify(final int orderId, final int amount, final int price, final int timestamp) {
-//        JsonObject message = MessageFactory.createModificationMessage(orderId, amount, price, timestamp);
-//        messageProcessingDispatcher.process(message);
-//    }
-//
-//    private void buy(final int orderId, final String product, final int amount, final int price, final int timestamp) {
-//        JsonObject message = MessageFactory.createBuyMessage(orderId, product, amount, price, timestamp);
-//        messageProcessingDispatcher.process(message);
-//    }
-//
-//    private void sell(final int orderId, final String product, final int amount, final int price, final int timestamp) {
-//        JsonObject message = MessageFactory.createBuyMessage(orderId, product, amount, price, timestamp);
-//        messageProcessingDispatcher.process(message);
+//        public Set<OrderBook> orderBooks () {
+//            return Sets.newHashSet(new OrderBook[]{
+//                OrderBook.builder().product("A").sellEntry(OrderEntry.builder().id(1).amount(180000000).price(6).client("100").broker("1").build())
+//                    .buyEntry(OrderEntry.builder().id(1).amount(9700000).price(4).client("103").broker("1").build()).build()});
+//        }
 //    }
 }

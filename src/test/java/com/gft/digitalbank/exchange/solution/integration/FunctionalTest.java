@@ -501,33 +501,4 @@ public class FunctionalTest {
             assertThat(tx.getPrice()).isEqualTo(500);
         });
     }
-
-    @Test
-    public void scenario19() {
-        // given
-        String product = "A";
-        JsonObject sellMessage1 = MessageFactory.createSellMessage(1, product, 100, 100, 1, broker, client);
-        JsonObject sellMessage2 = MessageFactory.createSellMessage(2, product, 200, 90, 2, broker, client);
-        JsonObject sellMessage3 = MessageFactory.createSellMessage(3, product, 300, 90, 3, broker, client);
-
-        JsonObject modificationMessage1 = MessageFactory.createModificationMessage(2, 1000, 90, 7, broker);
-        JsonObject modificationMessage2 = MessageFactory.createModificationMessage(2, 150, 100, 7, broker);
-        JsonObject modificationMessage3 = MessageFactory.createModificationMessage(2, 300, 101, 7, broker);
-        JsonObject modificationMessage4 = MessageFactory.createModificationMessage(2, 300, 100, 7, broker);
-
-        // when
-        messageProcessingDispatcher.process(sellMessage1);
-        messageProcessingDispatcher.process(sellMessage2);
-        messageProcessingDispatcher.process(sellMessage3);
-
-        messageProcessingDispatcher.process(modificationMessage1);
-        messageProcessingDispatcher.process(modificationMessage2);
-        messageProcessingDispatcher.process(modificationMessage3);
-        messageProcessingDispatcher.process(modificationMessage4);
-
-        // then
-        ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct(product);
-        System.out.println(productRegistry.toOrderBook());
-
-    }
 }
