@@ -3,7 +3,6 @@ package com.gft.digitalbank.exchange.solution.resequencer;
 import java.util.Comparator;
 import java.util.concurrent.PriorityBlockingQueue;
 import java.util.concurrent.Semaphore;
-import java.util.concurrent.TimeUnit;
 
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
@@ -25,8 +24,6 @@ class Resequencer {
     private static final long TIME_WINDOW_IN_MILLIS = 10;
 
     private static final String ARRIVAL_TIMESTAMP_PROPERTY = "arrivalTimestamp";
-
-    private final Semaphore timeoutMutex = new Semaphore(0);
 
     private final Semaphore shutdownCompletedMutex = new Semaphore(0);
 
@@ -56,8 +53,7 @@ class Resequencer {
         return new Thread(() -> {
             while (keepRunning) {
                 try {
-                    timeoutMutex.tryAcquire(TIME_WINDOW_IN_MILLIS, TimeUnit.MILLISECONDS);
-
+                    Thread.sleep(TIME_WINDOW_IN_MILLIS);
                     flushOldMessages();
                     maxArrivalTimestampToProcess += TIME_WINDOW_IN_MILLIS;
                 } catch (InterruptedException ex) {
