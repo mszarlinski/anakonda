@@ -40,7 +40,7 @@ public class StockExchange implements Exchange {
     public void start() {
         Assert.notNull(processingListener, "processingListener cannot be null");
 
-        new StockExchangeTask(processingListener, destinations).start();
+        new StockExchangeWorker(processingListener, destinations).start();
     }
 
     @VisibleForTesting

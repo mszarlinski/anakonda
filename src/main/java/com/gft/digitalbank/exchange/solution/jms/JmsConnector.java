@@ -9,18 +9,15 @@ import javax.jms.Connection;
 import javax.jms.JMSException;
 
 import org.apache.activemq.ActiveMQConnectionFactory;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
 
 import com.gft.digitalbank.exchange.solution.Jndi;
 import com.gft.digitalbank.exchange.solution.Spring;
+import com.gft.digitalbank.exchange.solution.resequencer.ResequencerDispatcher;
 
 /**
  * @author mszarlinski on 2016-06-28.
  */
 public class JmsConnector {
-
-    private static final Log log = LogFactory.getLog(JmsConnector.class);
 
     private final Jndi jndi;
 
@@ -28,7 +25,7 @@ public class JmsConnector {
         this.jndi = jndi;
     }
 
-    public JmsContext connect(final List<String> queues, final CountDownLatch shutdownLatch) throws JMSException {
+    public JmsContext connect(final List<String> queues, final CountDownLatch shutdownLatch, final ResequencerDispatcher resequencerDispatcher) throws JMSException {
         final ActiveMQConnectionFactory connectionFactory = jndi.lookup("ConnectionFactory");
 
         final Connection connection = connectionFactory.createConnection();
@@ -37,8 +34,7 @@ public class JmsConnector {
         queues.parallelStream()
             .forEach(queue -> {
                 final ExchangeMessageListener pt = Spring.getBean(ExchangeMessageListener.class);
-                pt.start(queue, shutdownLatch, connection);
-
+                pt.start(queue, shutdownLatch, connection, resequencerDispatcher);
             });
 
         return JmsContext.builder()

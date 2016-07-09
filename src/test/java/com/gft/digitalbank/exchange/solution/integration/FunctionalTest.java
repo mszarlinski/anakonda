@@ -14,8 +14,8 @@ import com.gft.digitalbank.exchange.solution.Spring;
 import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
 import com.gft.digitalbank.exchange.solution.dataStructures.ProductRegistry;
 import com.gft.digitalbank.exchange.solution.jms.JmsConfiguration;
-import com.gft.digitalbank.exchange.solution.jms.MessageProcessingDispatcher;
 import com.gft.digitalbank.exchange.solution.jms.ProcessingConfiguration;
+import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
 import com.google.gson.JsonObject;
 
 /**

@@ -1,13 +1,9 @@
-package com.gft.digitalbank.exchange.solution.jms;
+package com.gft.digitalbank.exchange.solution.processing;
 
 import java.util.Map;
 import java.util.Optional;
 
 import com.gft.digitalbank.exchange.model.orders.MessageType;
-import com.gft.digitalbank.exchange.solution.processing.BuySellOrderProcessor;
-import com.gft.digitalbank.exchange.solution.processing.CancellationProcessor;
-import com.gft.digitalbank.exchange.solution.processing.MessageProcessor;
-import com.gft.digitalbank.exchange.solution.processing.ModificationProcessor;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonObject;
 
@@ -18,8 +14,8 @@ public class MessageProcessingDispatcher {
 
     private final Map<MessageType, MessageProcessor> messageProcessors;
 
-    public MessageProcessingDispatcher(final ModificationProcessor modificationProcessor, final CancellationProcessor cancellationProcessor, final BuySellOrderProcessor
-        buySellOrderProcessor) {
+    public MessageProcessingDispatcher(final ModificationProcessor modificationProcessor, final CancellationProcessor cancellationProcessor,
+        final BuySellOrderProcessor buySellOrderProcessor) {
 
         messageProcessors = ImmutableMap.<MessageType, MessageProcessor>builder()
             .put(MessageType.ORDER, buySellOrderProcessor)

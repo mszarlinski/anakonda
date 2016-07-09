@@ -1,23 +1,27 @@
 package com.gft.digitalbank.exchange.solution;
 
+import lombok.NonNull;
+
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.gft.digitalbank.exchange.listener.ProcessingListener;
 import com.gft.digitalbank.exchange.model.SolutionResult;
 import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
 import com.gft.digitalbank.exchange.solution.jms.JmsConnector;
 import com.gft.digitalbank.exchange.solution.jms.JmsContext;
-import lombok.NonNull;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import java.util.List;
-import java.util.concurrent.CountDownLatch;
+import com.gft.digitalbank.exchange.solution.resequencer.ResequencerDispatcher;
 
 /**
+ * FIXME: czy ten task potrzebny gdy jest asynchorniczny Consumer?
  * @author mszarlinski on 2016-07-01.
  */
-public class StockExchangeTask extends Thread {
+public class StockExchangeWorker extends Thread {
 
-    private static final Log log = LogFactory.getLog(StockExchangeTask.class);
+    private static final Log log = LogFactory.getLog(StockExchangeWorker.class);
 
     private final ProcessingListener processingListener;
 
@@ -29,10 +33,13 @@ public class StockExchangeTask extends Thread {
 
     private final ExchangeRegistry exchangeRegistry;
 
-    public StockExchangeTask(@NonNull final ProcessingListener processingListener, @NonNull final List<String> destinations) {
-        // TODO: StockExchangeTask as prototype bean
+    private final ResequencerDispatcher resequencerDispatcher;
+
+    public StockExchangeWorker(@NonNull final ProcessingListener processingListener, @NonNull final List<String> destinations) {
+        // TODO: StockExchangeWorker as prototype bean
         jmsConnector = Spring.getBean(JmsConnector.class);
         exchangeRegistry = Spring.getBean(ExchangeRegistry.class);
+        resequencerDispatcher = Spring.getBean(ResequencerDispatcher.class);
 
         this.processingListener = processingListener;
         this.destinations = destinations;
@@ -40,14 +47,16 @@ public class StockExchangeTask extends Thread {
 
     @Override
     public void run() {
-        log.info("Starting StockExchangeTask");
+        log.info("Starting StockExchangeWorker");
 
         JmsContext jmsContext = null;
         try {
             final CountDownLatch shutdownLatch = new CountDownLatch(destinations.size());
-            jmsContext = jmsConnector.connect(destinations, shutdownLatch);
+            jmsContext = jmsConnector.connect(destinations, shutdownLatch, resequencerDispatcher);
 
             shutdownLatch.await();
+
+            resequencerDispatcher.awaitShutdown();
 
             processingListener.processingDone(SolutionResult.builder()
                 .orderBooks(exchangeRegistry.extractOrderBooks())

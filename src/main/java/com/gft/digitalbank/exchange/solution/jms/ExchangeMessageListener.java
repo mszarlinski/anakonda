@@ -15,6 +15,7 @@ import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
 import com.gft.digitalbank.exchange.model.orders.MessageType;
+import com.gft.digitalbank.exchange.solution.resequencer.ResequencerDispatcher;
 import com.google.gson.JsonObject;
 
 /**
@@ -30,21 +31,21 @@ public class ExchangeMessageListener implements MessageListener {
 
     private final MessageDeserializer messageDeserializer;
 
-    private final MessageProcessingDispatcher messageProcessingDispatcher;
-
     private Session session;
 
     private MessageConsumer messageConsumer;
 
-    public ExchangeMessageListener(final MessageDeserializer messageDeserializer, final MessageProcessingDispatcher messageProcessingDispatcher) {
+    private ResequencerDispatcher resequencerDispatcher;
+
+    public ExchangeMessageListener(final MessageDeserializer messageDeserializer) {
         this.messageDeserializer = messageDeserializer;
-        this.messageProcessingDispatcher = messageProcessingDispatcher;
     }
 
-    public void start(final String queueName, final CountDownLatch shutdownLatch, final Connection connection) {
+    public void start(final String queueName, final CountDownLatch shutdownLatch, final Connection connection, final ResequencerDispatcher resequencerDispatcher) {
         log.info("Starting task for queue: " + queueName);
 
         this.shutdownLatch = shutdownLatch;
+        this.resequencerDispatcher = resequencerDispatcher;
 
         try {
             session = connection.createSession(NON_TRANSACTED, Session.AUTO_ACKNOWLEDGE);
@@ -67,10 +68,21 @@ public class ExchangeMessageListener implements MessageListener {
                 final JsonObject messageObj = messageDeserializer.deserialize((TextMessage) message);
                 final MessageType messageType = MessageType.valueOf(messageObj.get("messageType").getAsString());
 
-                if (messageType == MessageType.SHUTDOWN_NOTIFICATION) {
-                    processShutdownNotification();
-                } else {
-                    messageProcessingDispatcher.process(messageObj);
+                switch (messageType) {
+                    case ORDER:
+                        resequencerDispatcher.addOrderMessage(messageObj);
+                        break;
+                    case MODIFICATION:
+                        resequencerDispatcher.addAlteringMessage(messageObj, messageObj.get("modifiedOrderId").getAsInt());
+                        break;
+                    case CANCEL:
+                        resequencerDispatcher.addAlteringMessage(messageObj, messageObj.get("cancelledOrderId").getAsInt());
+                        break;
+                    case SHUTDOWN_NOTIFICATION:
+                        shutdown();
+                        break;
+                    default:
+                        log.error("Unsupported message type: " + messageType);
                 }
             } catch (Exception ex) {
                 log.error("Error while processing message", ex);
@@ -80,15 +92,11 @@ public class ExchangeMessageListener implements MessageListener {
         }
     }
 
-    private void processShutdownNotification() {
-        shutdownLatch.countDown();
-        shutdown();
-    }
-
-    private void shutdown() {
+    public void shutdown() {
         try {
             messageConsumer.close();
             session.close();
+            shutdownLatch.countDown();
         } catch (JMSException ex) {
             log.error(ex.getMessage(), ex);
         }

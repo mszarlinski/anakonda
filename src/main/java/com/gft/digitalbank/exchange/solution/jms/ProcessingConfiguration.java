@@ -1,22 +1,26 @@
 package com.gft.digitalbank.exchange.solution.jms;
 
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+
+import org.springframework.context.ApplicationContext;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+import org.springframework.context.annotation.Scope;
+
 import com.gft.digitalbank.exchange.solution.Jndi;
 import com.gft.digitalbank.exchange.solution.Spring;
 import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
 import com.gft.digitalbank.exchange.solution.message.Order;
 import com.gft.digitalbank.exchange.solution.processing.BuySellOrderProcessor;
 import com.gft.digitalbank.exchange.solution.processing.CancellationProcessor;
+import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
 import com.gft.digitalbank.exchange.solution.processing.ModificationProcessor;
-import org.springframework.context.ApplicationContext;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Scope;
-
-import javax.naming.Context;
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
+import com.gft.digitalbank.exchange.solution.resequencer.ResequencerDispatcher;
 
 /**
  * @author mszarlinskion 2016-06-28.
@@ -72,13 +76,18 @@ public class ProcessingConfiguration {
 
     @Bean
     public MessageProcessingDispatcher messageProcessingDispatcher(ModificationProcessor modificationProcessor, CancellationProcessor cancellationProcessor,
-                                                                   BuySellOrderProcessor buySellOrderProcessor) {
+        BuySellOrderProcessor buySellOrderProcessor) {
         return new MessageProcessingDispatcher(modificationProcessor, cancellationProcessor, buySellOrderProcessor);
     }
 
     @Bean
+    public ResequencerDispatcher resequencerDispatcher(final MessageProcessingDispatcher messageProcessingDispatcher) {
+        return new ResequencerDispatcher(messageProcessingDispatcher);
+    }
+
+    @Bean
     @Scope("prototype")
-    public ExchangeMessageListener messageProcessingTask(MessageDeserializer messageDeserializer, MessageProcessingDispatcher messageProcessingDispatcher) {
-        return new ExchangeMessageListener(messageDeserializer, messageProcessingDispatcher);
+    public ExchangeMessageListener messageProcessingTask(MessageDeserializer messageDeserializer) {
+        return new ExchangeMessageListener(messageDeserializer);
     }
 }
