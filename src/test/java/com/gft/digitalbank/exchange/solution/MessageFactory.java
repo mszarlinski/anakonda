@@ -9,7 +9,7 @@ import com.google.gson.JsonObject;
  */
 public class MessageFactory {
 
-    public static JsonObject createModificationMessage(int orderId, int amount, int price, int timestamp, String broker) {
+    public static JsonObject createModificationMessage(int orderId, int amount, int price, long timestamp, String broker) {
         JsonObject message = new JsonObject();
         message.addProperty("modifiedOrderId", orderId);
         message.addProperty("messageType", MessageType.MODIFICATION.toString());
@@ -24,15 +24,15 @@ public class MessageFactory {
         return message;
     }
 
-    public static JsonObject createBuyMessage(int orderId, String product, int amount, int price, int timestamp, String broker, String client) {
+    public static JsonObject createBuyMessage(int orderId, String product, int amount, int price, long timestamp, String broker, String client) {
         return createOrderMessage(orderId, product, amount, price, timestamp, broker, client, Side.BUY);
     }
 
-    public static JsonObject createSellMessage(int orderId, String product, int amount, int price, int timestamp, String broker, String client) {
+    public static JsonObject createSellMessage(int orderId, String product, int amount, int price, long timestamp, String broker, String client) {
         return createOrderMessage(orderId, product, amount, price, timestamp, broker, client, Side.SELL);
     }
 
-    private static JsonObject createOrderMessage(int orderId, String product, int amount, int price, int timestamp, String broker, String client, Side side) {
+    private static JsonObject createOrderMessage(int orderId, String product, int amount, int price, long timestamp, String broker, String client, Side side) {
         JsonObject message = new JsonObject();
         message.addProperty("id", orderId);
         message.addProperty("messageType", MessageType.ORDER.toString());

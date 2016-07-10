@@ -1,19 +1,21 @@
 package com.gft.digitalbank.exchange.solution.resequencer;
 
-import static java.util.stream.Collectors.toList;
+import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
+import com.google.gson.JsonObject;
 
 import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
-import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
-import com.google.gson.JsonObject;
+import static java.util.stream.Collectors.toList;
 
 /**
  * @author mszarlinski on 2016-07-08.
  */
 public class ResequencerDispatcher {
+
+    public static final int INITIAL_WINDOW_SIZE_MILLIS = 10;
 
     private final ConcurrentMap<String, Resequencer> productResequencers = new ConcurrentHashMap<>();
 
@@ -46,7 +48,7 @@ public class ResequencerDispatcher {
         Resequencer resequencer = productResequencers.get(product);
         if (resequencer == null) {
             resequencer = new Resequencer(messageProcessingDispatcher);
-            resequencer.start();
+            resequencer.startWithWindowOf(INITIAL_WINDOW_SIZE_MILLIS);
             productResequencers.put(product, resequencer);
         }
         resequencer.addMessage(message);
@@ -54,11 +56,13 @@ public class ResequencerDispatcher {
 
     public void awaitShutdown() {
         final List<CompletableFuture<Void>> futures = productResequencers.values()
-            .stream()
-            .map(r -> CompletableFuture.runAsync(r::awaitShutdown))
-            .collect(toList());
+                .stream()
+                .map(r -> CompletableFuture.runAsync(r::awaitShutdown))
+                .collect(toList());
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).join();
+
+        // TODO: handle Resequencers' failures - supplyAsync(r::awaitShutdown)
     }
 
 }

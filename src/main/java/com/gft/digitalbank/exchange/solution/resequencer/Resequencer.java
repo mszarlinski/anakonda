@@ -1,14 +1,13 @@
 package com.gft.digitalbank.exchange.solution.resequencer;
 
-import java.util.Comparator;
-import java.util.concurrent.PriorityBlockingQueue;
-import java.util.concurrent.Semaphore;
-
+import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
+import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
 
-import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
-import com.google.gson.JsonObject;
+import java.util.Comparator;
+import java.util.concurrent.PriorityBlockingQueue;
+import java.util.concurrent.Semaphore;
 
 /**
  * @author mszarlinski on 2016-07-07.
@@ -21,7 +20,7 @@ class Resequencer {
      * We assume that messages with arrivalTime within the window have correct order. The longer window is, the less performant is the system.
      */
     //TODO: dynamically resizing window
-    private static final long TIME_WINDOW_IN_MILLIS = 10;
+    private long windowSizeMillis;
 
     private static final String ARRIVAL_TIMESTAMP_PROPERTY = "arrivalTimestamp";
 
@@ -33,8 +32,10 @@ class Resequencer {
 
     private long maxProcessedMessageTimestamp = -1;
 
+    private boolean finishedWithoutErrors = true;
+
     private final PriorityBlockingQueue<JsonObject> orderingQueue =
-        new PriorityBlockingQueue<>(11, Comparator.comparingLong(msg -> msg.get("timestamp").getAsLong()));
+            new PriorityBlockingQueue<>(11, Comparator.comparingLong(msg -> msg.get("timestamp").getAsLong()));
 
     private final MessageProcessingDispatcher messageProcessingDispatcher;
 
@@ -42,9 +43,10 @@ class Resequencer {
         this.messageProcessingDispatcher = messageProcessingDispatcher;
     }
 
-    void start() {
+    void startWithWindowOf(final int initialWindowSizeMillis) {
         keepRunning = true;
-        maxArrivalTimestampToProcess = System.currentTimeMillis() + TIME_WINDOW_IN_MILLIS;
+        maxArrivalTimestampToProcess = System.currentTimeMillis() + windowSizeMillis;
+        windowSizeMillis = initialWindowSizeMillis;
 
         createTimerThread().start();
     }
@@ -53,9 +55,9 @@ class Resequencer {
         return new Thread(() -> {
             while (keepRunning) {
                 try {
-                    Thread.sleep(TIME_WINDOW_IN_MILLIS);
+                    Thread.sleep(windowSizeMillis);
                     flushOldMessages();
-                    maxArrivalTimestampToProcess += TIME_WINDOW_IN_MILLIS;
+                    maxArrivalTimestampToProcess += windowSizeMillis;
                 } catch (InterruptedException ex) {
                     log.error("Error while waiting on mutex", ex);
                 }
@@ -88,7 +90,9 @@ class Resequencer {
     private void assertCorrectTimestamp(final long timestampToBeProcessed) throws IllegalStateException {
         if (maxProcessedMessageTimestamp != -1) {
             if (maxProcessedMessageTimestamp > timestampToBeProcessed) {
-                throw new IllegalStateException("Messages are not processed in correct order");
+                log.error("Messages are not processed in correct order");
+                finishedWithoutErrors = false;
+                shutdownCompletedMutex.release();
             }
         } else {
             maxProcessedMessageTimestamp = timestampToBeProcessed;
@@ -104,12 +108,14 @@ class Resequencer {
         orderingQueue.add(message);
     }
 
-    void awaitShutdown() {
+    boolean awaitShutdown() {
         keepRunning = false;
         try {
             shutdownCompletedMutex.acquire();
         } catch (InterruptedException ex) {
             log.error("Failed to awaitShutdown gracefully.", ex);
         }
+
+        return finishedWithoutErrors;
     }
 }

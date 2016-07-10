@@ -18,7 +18,7 @@
         <dependency>
             <groupId>com.gft.digitalbanking</groupId>
             <artifactId>competition-2016</artifactId>
-            <version>[1.0.0,)</version>
+            <version>[1.0.1,)</version>
         </dependency>
         <!-- SPRING CONFIGURATION SUPPORT -->
         <dependency>
@@ -49,6 +49,12 @@
             <artifactId>catch-exception</artifactId>
             <version>1.4.4</version>
             <scope>test</scope>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.mockito</groupId>
+                    <artifactId>mockito-all</artifactId>
+                </exclusion>
+            </exclusions>
         </dependency>
         <!--<dependency>-->
             <!--<groupId>org.testng</groupId>-->
