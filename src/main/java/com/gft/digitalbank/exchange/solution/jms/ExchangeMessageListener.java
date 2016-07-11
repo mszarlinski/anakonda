@@ -37,8 +37,8 @@ public class ExchangeMessageListener implements MessageListener {
 
     private ResequencerDispatcher resequencerDispatcher;
 
-    public ExchangeMessageListener(final MessageDeserializer messageDeserializer) {
-        this.messageDeserializer = messageDeserializer;
+    public ExchangeMessageListener() {
+        this.messageDeserializer = new MessageDeserializer();
     }
 
     public void start(final String queueName, final CountDownLatch shutdownLatch, final Connection connection, final ResequencerDispatcher resequencerDispatcher) {

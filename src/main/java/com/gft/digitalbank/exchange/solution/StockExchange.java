@@ -3,14 +3,14 @@ package com.gft.digitalbank.exchange.solution;
 import java.util.ArrayList;
 import java.util.List;
 
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
+import javax.naming.NamingException;
+
 import org.springframework.util.Assert;
 
 import com.gft.digitalbank.exchange.Exchange;
 import com.gft.digitalbank.exchange.listener.ProcessingListener;
-import com.gft.digitalbank.exchange.solution.jms.JmsConfiguration;
-import com.gft.digitalbank.exchange.solution.jms.ProcessingConfiguration;
 import com.google.common.annotations.VisibleForTesting;
+import com.google.common.base.Throwables;
 
 /**
  * Your solution must implement the {@link Exchange} interface.
@@ -20,11 +20,6 @@ public class StockExchange implements Exchange {
     private ProcessingListener processingListener;
 
     private List<String> destinations = new ArrayList<>();
-
-    public StockExchange() {
-        // start Spring container
-        new AnnotationConfigApplicationContext(ProcessingConfiguration.class, JmsConfiguration.class);
-    }
 
     @Override
     public void register(final ProcessingListener processingListener) {
@@ -40,7 +35,11 @@ public class StockExchange implements Exchange {
     public void start() {
         Assert.notNull(processingListener, "processingListener cannot be null");
 
-        new StockExchangeWorker(processingListener, destinations).start();
+        try {
+            new StockExchangeWorker(processingListener, destinations).start();
+        } catch (NamingException e) {
+            Throwables.propagate(e);
+        }
     }
 
     @VisibleForTesting

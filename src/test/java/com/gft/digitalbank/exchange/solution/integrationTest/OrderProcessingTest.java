@@ -5,16 +5,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.List;
 
-import org.junit.Before;
 import org.junit.Test;
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 
 import com.gft.digitalbank.exchange.solution.MessageFactory;
-import com.gft.digitalbank.exchange.solution.Spring;
 import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
 import com.gft.digitalbank.exchange.solution.dataStructures.ProductRegistry;
-import com.gft.digitalbank.exchange.solution.jms.JmsConfiguration;
-import com.gft.digitalbank.exchange.solution.jms.ProcessingConfiguration;
 import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
 import com.google.gson.JsonObject;
 
@@ -32,14 +27,6 @@ public class OrderProcessingTest {
     private String broker = "Broker";
 
     private String client = "Client";
-
-    @Before
-    public void reloadBeans() {
-        new AnnotationConfigApplicationContext(ProcessingConfiguration.class, JmsConfiguration.class);
-
-        messageProcessingDispatcher = Spring.getBean(MessageProcessingDispatcher.class);
-        exchangeRegistry = Spring.getBean(ExchangeRegistry.class);
-    }
 
     //TODO: split this test into smaller ones
     // BUY & SELL BASIC TESTS

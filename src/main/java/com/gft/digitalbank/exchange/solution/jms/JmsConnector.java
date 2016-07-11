@@ -11,7 +11,6 @@ import javax.jms.JMSException;
 import org.apache.activemq.ActiveMQConnectionFactory;
 
 import com.gft.digitalbank.exchange.solution.Jndi;
-import com.gft.digitalbank.exchange.solution.Spring;
 import com.gft.digitalbank.exchange.solution.resequencer.ResequencerDispatcher;
 
 /**
@@ -33,7 +32,7 @@ public class JmsConnector {
 
         queues.parallelStream()
             .forEach(queue -> {
-                final ExchangeMessageListener pt = Spring.getBean(ExchangeMessageListener.class);
+                final ExchangeMessageListener pt = new ExchangeMessageListener();
                 pt.start(queue, shutdownLatch, connection, resequencerDispatcher);
             });
 
