@@ -42,7 +42,7 @@ public class ExchangeMessageListener implements MessageListener {
     }
 
     public void start(final String queueName, final CountDownLatch shutdownLatch, final Connection connection, final ResequencerDispatcher resequencerDispatcher) {
-        log.info("Starting task for queue: " + queueName);
+        log.debug("Starting task for queue: " + queueName);
 
         this.shutdownLatch = shutdownLatch;
         this.resequencerDispatcher = resequencerDispatcher;
@@ -54,7 +54,7 @@ public class ExchangeMessageListener implements MessageListener {
             messageConsumer = session.createConsumer(queue);
             messageConsumer.setMessageListener(this);
 
-            log.info("Task started");
+            log.debug("Task started");
         } catch (JMSException e) {
             log.error(e.getMessage(), e);
             shutdown();

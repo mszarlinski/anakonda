@@ -36,14 +36,12 @@ public class ExchangeRegistry implements Lockable {
     }
 
     public ProductRegistry getOrCreateProductRegistryForProduct(final String product) {
-        return doWithLock(() -> {
-            ProductRegistry productRegistry = productRegistries.get(product);
-            if (productRegistry == null) {
-                productRegistry = new ProductRegistry(product);
-                productRegistries.put(product, productRegistry);
-            }
-            return productRegistry;
-        });
+        ProductRegistry productRegistry = productRegistries.get(product);
+        if (productRegistry == null) {
+            productRegistry = new ProductRegistry(product);
+            productRegistries.put(product, productRegistry);
+        }
+        return productRegistry;
     }
 
     public ProductRegistry getProductRegistryForProduct(final String product) {

@@ -58,19 +58,17 @@ public class ProductRegistry implements Lockable {
     }
 
     public void addOrderToRegistry(final Order order, final ConcurrentMap<Integer, Order> ordersRegistry) {
-        doWithLock(() -> {
-            if (order.getSide() == Side.BUY) {
-                doAddOrderToRegistry(order, ordersRegistry, buyOrders, sellOrders,
-                    (buyPrice, sellPrice) -> sellPrice - buyPrice,
-                    (buyOrder, sellOrder) -> buyOrder,
-                    (buyOrder, sellOrder) -> sellOrder);
-            } else {
-                doAddOrderToRegistry(order, ordersRegistry, sellOrders, buyOrders,
-                    (buyPrice, sellPrice) -> buyPrice - sellPrice,
-                    (sellPrice, buyPrice) -> buyPrice,
-                    (sellPrice, buyPrice) -> sellPrice);
-            }
-        });
+        if (order.getSide() == Side.BUY) {
+            doAddOrderToRegistry(order, ordersRegistry, buyOrders, sellOrders,
+                (buyPrice, sellPrice) -> sellPrice - buyPrice,
+                (buyOrder, sellOrder) -> buyOrder,
+                (buyOrder, sellOrder) -> sellOrder);
+        } else {
+            doAddOrderToRegistry(order, ordersRegistry, sellOrders, buyOrders,
+                (buyPrice, sellPrice) -> buyPrice - sellPrice,
+                (sellPrice, buyPrice) -> buyPrice,
+                (sellPrice, buyPrice) -> sellPrice);
+        }
     }
 
     private void doAddOrderToRegistry(final Order order, final ConcurrentMap<Integer, Order> ordersRegistry, final PriorityQueue<Order> targetQueue, final PriorityQueue<Order>

@@ -61,7 +61,9 @@ public class ModificationProcessor implements MessageProcessor {
         modifiedOrder.modify(modification);
 
         if (modifiedOrder.getAmount() > 0) {
-            productRegistry.addOrderToRegistry(modifiedOrder, ordersRegistry); // reinsert modified order
+            productRegistry.doWithLock(() -> {
+                productRegistry.addOrderToRegistry(modifiedOrder, ordersRegistry); // reinsert modified order
+            });
         } else {
             ordersRegistry.remove(modifiedOrder.getId()); // forget about order
         }

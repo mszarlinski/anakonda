@@ -7,7 +7,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.CountDownLatch;
 
-import javax.naming.InitialContext;
 import javax.naming.NamingException;
 
 import org.apache.commons.logging.Log;
@@ -16,6 +15,7 @@ import org.apache.commons.logging.LogFactory;
 import com.gft.digitalbank.exchange.listener.ProcessingListener;
 import com.gft.digitalbank.exchange.model.SolutionResult;
 import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
+import com.gft.digitalbank.exchange.solution.error.ErrorsLog;
 import com.gft.digitalbank.exchange.solution.jms.JmsConnector;
 import com.gft.digitalbank.exchange.solution.jms.JmsContext;
 import com.gft.digitalbank.exchange.solution.message.Order;
@@ -24,6 +24,7 @@ import com.gft.digitalbank.exchange.solution.resequencer.ResequencerDispatcherFa
 
 /**
  * FIXME: czy ten task potrzebny gdy jest asynchorniczny Consumer?
+ *
  * @author mszarlinski on 2016-07-01.
  */
 public class StockExchangeWorker extends Thread {
@@ -42,12 +43,15 @@ public class StockExchangeWorker extends Thread {
 
     private final ResequencerDispatcher resequencerDispatcher;
 
+    private final ErrorsLog errorsLog;
+
     public StockExchangeWorker(@NonNull final ProcessingListener processingListener, @NonNull final List<String> destinations) throws NamingException {
         jmsConnector = new JmsConnector(new Jndi());
         exchangeRegistry = new ExchangeRegistry();
+        errorsLog = new ErrorsLog();
 
         final ConcurrentMap<Integer, Order> ordersRegistry = new ConcurrentHashMap<>();
-        resequencerDispatcher = ResequencerDispatcherFactory.createResequencerDispatcher(ordersRegistry, exchangeRegistry);
+        resequencerDispatcher = ResequencerDispatcherFactory.createResequencerDispatcher(ordersRegistry, exchangeRegistry, errorsLog);
 
         this.processingListener = processingListener;
         this.destinations = destinations;
@@ -55,7 +59,7 @@ public class StockExchangeWorker extends Thread {
 
     @Override
     public void run() {
-        log.info("Starting StockExchangeWorker");
+        log.debug("Starting StockExchangeWorker");
 
         JmsContext jmsContext = null;
         try {
@@ -66,17 +70,23 @@ public class StockExchangeWorker extends Thread {
 
             resequencerDispatcher.awaitShutdown();
 
-            processingListener.processingDone(SolutionResult.builder()
-                .orderBooks(exchangeRegistry.extractOrderBooks())
-                .transactions(exchangeRegistry.extractTransactions())
-                .build());
+            if (errorsLog.isEmpty()) {
+                processingListener.processingDone(SolutionResult.builder()
+                    .orderBooks(exchangeRegistry.extractOrderBooks())
+                    .transactions(exchangeRegistry.extractTransactions())
+                    .build());
 
-            log.info("Processing finished");
+                log.debug("Processing finished");
+            } else {
+                log.error(errorsLog.getMessages());
+                System.err.println(errorsLog.getMessages());
+                processingListener.processingDone(SolutionResult.builder().build()); //TODO: ErrorSolutionResult
+            }
         } catch (Exception ex) {
             log.error(ex.getMessage(), ex);
         } finally {
             jmsConnector.shutdown(jmsContext);
-            log.info("Shutdown finished");
+            log.debug("Shutdown finished");
         }
     }
 }

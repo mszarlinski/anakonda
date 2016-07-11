@@ -24,11 +24,12 @@ public class BuySellOrderProcessor implements MessageProcessor {
     @Override
     public void process(final JsonObject message) {
         final Order order = Order.fromMessage(message);
-
         final String product = order.getProduct();
-        final ProductRegistry productRegistry = exchangeRegistry.getOrCreateProductRegistryForProduct(product);
 
-        productRegistry.addOrderToRegistry(order, ordersRegistry);
+        exchangeRegistry.doWithLock(() -> {
+            final ProductRegistry productRegistry = exchangeRegistry.getOrCreateProductRegistryForProduct(product);
+
+            productRegistry.addOrderToRegistry(order, ordersRegistry);
+        });
     }
-
 }
