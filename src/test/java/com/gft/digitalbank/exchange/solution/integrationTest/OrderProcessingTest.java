@@ -1,17 +1,19 @@
 package com.gft.digitalbank.exchange.solution.integrationTest;
 
-import static java.util.Arrays.asList;
-import static org.assertj.core.api.Assertions.assertThat;
-
-import java.util.List;
-
-import org.junit.Test;
-
 import com.gft.digitalbank.exchange.solution.MessageFactory;
 import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
 import com.gft.digitalbank.exchange.solution.dataStructures.ProductRegistry;
+import com.gft.digitalbank.exchange.solution.processing.MessageDispatcherFactory;
 import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
 import com.google.gson.JsonObject;
+import org.junit.Before;
+import org.junit.Test;
+
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+
+import static java.util.Arrays.asList;
+import static org.assertj.core.api.Assertions.assertThat;
 
 /**
  * @author mszarlinski on 2016-07-04.
@@ -27,6 +29,13 @@ public class OrderProcessingTest {
     private String broker = "Broker";
 
     private String client = "Client";
+
+    @Before
+    public void setup() {
+        exchangeRegistry = new ExchangeRegistry();
+        messageProcessingDispatcher = MessageDispatcherFactory.createMessageDispatcher(
+                new ConcurrentHashMap<>(), exchangeRegistry);
+    }
 
     //TODO: split this test into smaller ones
     // BUY & SELL BASIC TESTS
@@ -211,11 +220,11 @@ public class OrderProcessingTest {
         // given
         String product = "A";
         List<JsonObject> buyMessages = asList(
-            MessageFactory.createBuyMessage(1, product, 10, 500, 1, broker, client),
-            MessageFactory.createBuyMessage(2, product, 10, 2000, 1, broker, client),
-            MessageFactory.createBuyMessage(3, product, 5, 1500, 1, broker, client),
-            MessageFactory.createBuyMessage(4, product, 3, 1200, 1, broker, client),
-            MessageFactory.createBuyMessage(5, product, 10, 1200, 2, broker, client));
+                MessageFactory.createBuyMessage(1, product, 10, 500, 1, broker, client),
+                MessageFactory.createBuyMessage(2, product, 10, 2000, 1, broker, client),
+                MessageFactory.createBuyMessage(3, product, 5, 1500, 1, broker, client),
+                MessageFactory.createBuyMessage(4, product, 3, 1200, 1, broker, client),
+                MessageFactory.createBuyMessage(5, product, 10, 1200, 2, broker, client));
 
         JsonObject sellMessage = MessageFactory.createSellMessage(6, product, 20, 1000, 5, broker, client);
 
@@ -230,25 +239,25 @@ public class OrderProcessingTest {
 
         assertThat(productRegistry.getBuyOrders()).hasSize(2);
         assertThat(productRegistry.getBuyOrders().poll())
-            .hasFieldOrPropertyWithValue("id", 5)
-            .hasFieldOrPropertyWithValue("amount", 8)
-            .hasFieldOrPropertyWithValue("price", 1200);
+                .hasFieldOrPropertyWithValue("id", 5)
+                .hasFieldOrPropertyWithValue("amount", 8)
+                .hasFieldOrPropertyWithValue("price", 1200);
 
         assertThat(productRegistry.getBuyOrders().poll())
-            .hasFieldOrPropertyWithValue("id", 1)
-            .hasFieldOrPropertyWithValue("amount", 10)
-            .hasFieldOrPropertyWithValue("price", 500);
+                .hasFieldOrPropertyWithValue("id", 1)
+                .hasFieldOrPropertyWithValue("amount", 10)
+                .hasFieldOrPropertyWithValue("price", 500);
 
         assertThat(productRegistry.getTransactions()).hasSize(4);
         assertThat(productRegistry.getTransactions())
-            .extracting("id")
-            .containsExactly(1, 2, 3, 4);
+                .extracting("id")
+                .containsExactly(1, 2, 3, 4);
         assertThat(productRegistry.getTransactions())
-            .extracting("amount")
-            .containsExactly(10, 5, 3, 2);
+                .extracting("amount")
+                .containsExactly(10, 5, 3, 2);
         assertThat(productRegistry.getTransactions())
-            .extracting("price")
-            .containsExactly(2000, 1500, 1200, 1200);
+                .extracting("price")
+                .containsExactly(2000, 1500, 1200, 1200);
     }
 
     @Test
@@ -259,11 +268,11 @@ public class OrderProcessingTest {
         JsonObject buyMessage = MessageFactory.createBuyMessage(1, product, 10, 2000, 5, broker, client);
 
         List<JsonObject> sellMessages = asList(
-            MessageFactory.createSellMessage(2, product, 2, 2000, 1, broker, client),
-            MessageFactory.createSellMessage(3, product, 3, 3000, 1, broker, client),
-            MessageFactory.createSellMessage(4, product, 2, 1000, 2, broker, client),
-            MessageFactory.createSellMessage(5, product, 1, 500, 1, broker, client),
-            MessageFactory.createSellMessage(6, product, 2, 1000, 1, broker, client)
+                MessageFactory.createSellMessage(2, product, 2, 2000, 1, broker, client),
+                MessageFactory.createSellMessage(3, product, 3, 3000, 1, broker, client),
+                MessageFactory.createSellMessage(4, product, 2, 1000, 2, broker, client),
+                MessageFactory.createSellMessage(5, product, 1, 500, 1, broker, client),
+                MessageFactory.createSellMessage(6, product, 2, 1000, 1, broker, client)
         );
 
         // when
@@ -287,11 +296,11 @@ public class OrderProcessingTest {
 
         assertThat(productRegistry.getTransactions()).hasSize(4);
         assertThat(productRegistry.getTransactions())
-            .extracting("amount")
-            .containsExactly(1, 2, 2, 2);
+                .extracting("amount")
+                .containsExactly(1, 2, 2, 2);
         assertThat(productRegistry.getTransactions())
-            .extracting("price")
-            .containsExactly(500, 1000, 1000, 2000);
+                .extracting("price")
+                .containsExactly(500, 1000, 1000, 2000);
     }
 
     // MODIFICATION & CANCEL
@@ -313,14 +322,14 @@ public class OrderProcessingTest {
         ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct(product);
 
         assertThat(productRegistry.getSellOrders().poll())
-            .hasFieldOrPropertyWithValue("id", 2)
-            .hasFieldOrPropertyWithValue("price", 200)
-            .hasFieldOrPropertyWithValue("amount", 5);
+                .hasFieldOrPropertyWithValue("id", 2)
+                .hasFieldOrPropertyWithValue("price", 200)
+                .hasFieldOrPropertyWithValue("amount", 5);
 
         assertThat(productRegistry.getSellOrders().poll())
-            .hasFieldOrPropertyWithValue("id", 1)
-            .hasFieldOrPropertyWithValue("price", 500)
-            .hasFieldOrPropertyWithValue("amount", 10);
+                .hasFieldOrPropertyWithValue("id", 1)
+                .hasFieldOrPropertyWithValue("price", 500)
+                .hasFieldOrPropertyWithValue("amount", 10);
     }
 
     @Test
@@ -338,7 +347,7 @@ public class OrderProcessingTest {
         ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct(product);
 
         assertThat(productRegistry.getSellOrders()).hasOnlyOneElementSatisfying(order ->
-            assertThat(order.getTimestamp()).isEqualTo(99));
+                assertThat(order.getTimestamp()).isEqualTo(99));
     }
 
     @Test
@@ -356,7 +365,7 @@ public class OrderProcessingTest {
         ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct(product);
 
         assertThat(productRegistry.getBuyOrders()).hasOnlyOneElementSatisfying(order ->
-            assertThat(order.getTimestamp()).isEqualTo(1));
+                assertThat(order.getTimestamp()).isEqualTo(1));
     }
 
     @Test
@@ -385,7 +394,7 @@ public class OrderProcessingTest {
         ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct(product);
 
         assertThat(productRegistry.getSellOrders()).hasOnlyOneElementSatisfying(order ->
-            assertThat(order.getId()).isEqualTo(1));
+                assertThat(order.getId()).isEqualTo(1));
     }
 
 
