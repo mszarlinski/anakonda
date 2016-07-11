@@ -1,4 +1,4 @@
-package com.gft.digitalbank.exchange.solution.unit;
+package com.gft.digitalbank.exchange.solution;
 
 import static com.googlecode.catchexception.CatchException.caughtException;
 import static com.googlecode.catchexception.apis.BDDCatchException.then;

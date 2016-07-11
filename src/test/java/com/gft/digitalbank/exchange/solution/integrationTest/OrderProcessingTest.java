@@ -1,4 +1,4 @@
-package com.gft.digitalbank.exchange.solution.integration;
+package com.gft.digitalbank.exchange.solution.integrationTest;
 
 import static java.util.Arrays.asList;
 import static org.assertj.core.api.Assertions.assertThat;
@@ -21,7 +21,7 @@ import com.google.gson.JsonObject;
 /**
  * @author mszarlinski on 2016-07-04.
  */
-public class FunctionalTest {
+public class OrderProcessingTest {
 
     private MessageProcessingDispatcher messageProcessingDispatcher;
 
@@ -41,6 +41,7 @@ public class FunctionalTest {
         exchangeRegistry = Spring.getBean(ExchangeRegistry.class);
     }
 
+    //TODO: split this test into smaller ones
     // BUY & SELL BASIC TESTS
 
     @Test

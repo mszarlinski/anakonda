@@ -1,4 +1,4 @@
-package com.gft.digitalbank.exchange.solution.stress;
+package com.gft.digitalbank.exchange.solution.integrationTest;
 
 import java.util.ArrayList;
 import java.util.Collections;

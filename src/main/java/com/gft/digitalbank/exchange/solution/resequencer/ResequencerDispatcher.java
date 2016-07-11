@@ -10,6 +10,8 @@ import java.util.concurrent.ConcurrentMap;
 
 import static java.util.stream.Collectors.toList;
 
+import org.springframework.util.Assert;
+
 /**
  * @author mszarlinski on 2016-07-08.
  */
@@ -40,6 +42,7 @@ public class ResequencerDispatcher {
 
     public void addAlteringMessage(final JsonObject message, final int orderId) {
         final String product = orderIdToProduct.get(orderId);
+        Assert.notNull(product, "Unable to classify altering message to product: " + message);
         addMessageToResequencer(message, product);
     }
 
