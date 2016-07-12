@@ -13,7 +13,7 @@ import java.util.concurrent.CountDownLatch;
 /**
  * @author mszarlinski on 2016-06-30.
  */
-public class ExchangeMessageListener implements MessageListener {
+class ExchangeMessageListener implements MessageListener {
 
     private static final Log log = LogFactory.getLog(ExchangeMessageListener.class);
 
@@ -30,12 +30,12 @@ public class ExchangeMessageListener implements MessageListener {
     private ResequencerDispatcher resequencerDispatcher;
     private AsyncErrorsKeeper asyncErrorsKeeper;
 
-    public ExchangeMessageListener() {
+    ExchangeMessageListener() {
         this.messageDeserializer = new MessageDeserializer();
     }
 
-    public void start(final String queueName, final CountDownLatch shutdownLatch, final Connection connection, final ResequencerDispatcher resequencerDispatcher,
-                      final AsyncErrorsKeeper asyncErrorsKeeper) {
+    void start(final String queueName, final CountDownLatch shutdownLatch, final Connection connection, final ResequencerDispatcher resequencerDispatcher,
+        final AsyncErrorsKeeper asyncErrorsKeeper) {
         log.debug("Starting task for queue: " + queueName);
 
         this.shutdownLatch = shutdownLatch;
@@ -80,7 +80,7 @@ public class ExchangeMessageListener implements MessageListener {
                         log.error("Unsupported message type: " + messageType);
                 }
             } catch (Exception ex) {
-                // TODO: czy jest sens tutaj logowaæ?
+                // TODO: czy jest sens tutaj logowaÄ‡
                 log.error("Error while processing message", ex);
                 asyncErrorsKeeper.logError(ex.getMessage());
             }

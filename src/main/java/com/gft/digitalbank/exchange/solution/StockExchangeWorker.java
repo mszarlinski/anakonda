@@ -1,5 +1,15 @@
 package com.gft.digitalbank.exchange.solution;
 
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.CountDownLatch;
+
+import javax.naming.NamingException;
+
+import org.apache.commons.logging.Log;
+import org.apache.commons.logging.LogFactory;
+
 import com.gft.digitalbank.exchange.listener.ProcessingListener;
 import com.gft.digitalbank.exchange.model.SolutionResult;
 import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
@@ -9,21 +19,11 @@ import com.gft.digitalbank.exchange.solution.jms.JmsContext;
 import com.gft.digitalbank.exchange.solution.message.Order;
 import com.gft.digitalbank.exchange.solution.resequencer.ResequencerDispatcher;
 import com.gft.digitalbank.exchange.solution.resequencer.ResequencerDispatcherFactory;
-import org.apache.commons.logging.Log;
-import org.apache.commons.logging.LogFactory;
-
-import javax.naming.NamingException;
-import java.util.List;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.ConcurrentMap;
-import java.util.concurrent.CountDownLatch;
 
 /**
- * FIXME: czy ten task potrzebny gdy jest asynchorniczny Consumer?
- *
  * @author mszarlinski on 2016-07-01.
  */
-public class StockExchangeWorker extends Thread {
+class StockExchangeWorker extends Thread {
 
     private static final Log log = LogFactory.getLog(StockExchangeWorker.class);
 
@@ -39,7 +39,7 @@ public class StockExchangeWorker extends Thread {
 
     private final AsyncErrorsKeeper asyncErrorsKeeper;
 
-    public StockExchangeWorker(final ProcessingListener processingListener, final List<String> destinations) throws NamingException {
+    StockExchangeWorker(final ProcessingListener processingListener, final List<String> destinations) throws NamingException {
         asyncErrorsKeeper = new AsyncErrorsKeeper();
         jmsConnector = new JmsConnector(new Jndi(), asyncErrorsKeeper);
         exchangeRegistry = new ExchangeRegistry();
@@ -49,8 +49,6 @@ public class StockExchangeWorker extends Thread {
 
         this.processingListener = processingListener;
         this.destinations = destinations;
-
-        setUncaughtExceptionHandler((t, e) -> asyncErrorsKeeper.logError(e.getMessage()));
     }
 
     @Override
@@ -79,7 +77,7 @@ public class StockExchangeWorker extends Thread {
                 processingListener.processingDone(SolutionResult.builder().build()); //TODO: ErrorSolutionResult
             }
         } catch (Exception ex) {
-            log.error(ex.getMessage(), ex);
+            asyncErrorsKeeper.logError(ex.getMessage());
         } finally {
             jmsConnector.shutdown(jmsContext);
             log.debug("Shutdown finished");

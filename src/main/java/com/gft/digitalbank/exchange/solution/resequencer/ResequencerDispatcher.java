@@ -60,7 +60,7 @@ public class ResequencerDispatcher {
         Resequencer resequencer = productResequencers.get(product);
         if (resequencer == null) {
             resequencer = new Resequencer(messageProcessingDispatcher, asyncErrorsKeeper);
-            resequencer.startWithWindowOf(INITIAL_WINDOW_SIZE_MILLIS);
+            resequencer.startWithWindowOf(WINDOW_SIZE_MILLIS);
             productResequencers.put(product, resequencer);
         }
         mutex.unlock();

@@ -10,6 +10,6 @@ import com.gft.digitalbank.exchange.verification.test.VerificationTest;
 public class ConcurrencyTestSuite extends VerificationTest {
 
     public ConcurrencyTestSuite() {
-        super(asList(new BuySellsMatchingScenario(), new OrderModificationsScenario()));
+        super(asList(new BuySellsMatchingScenario()));
     }
 }

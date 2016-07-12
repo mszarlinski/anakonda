@@ -16,7 +16,7 @@ public class MessageProcessingDispatcher {
 
     private final AsyncErrorsKeeper asyncErrorsKeeper;
 
-    public MessageProcessingDispatcher(final ModificationProcessor modificationProcessor, final CancellationProcessor cancellationProcessor,
+    MessageProcessingDispatcher(final ModificationProcessor modificationProcessor, final CancellationProcessor cancellationProcessor,
         final BuySellOrderProcessor buySellOrderProcessor, final AsyncErrorsKeeper asyncErrorsKeeper) {
 
         this.asyncErrorsKeeper = asyncErrorsKeeper;
@@ -29,8 +29,6 @@ public class MessageProcessingDispatcher {
     }
 
     public void process(final JsonObject message) {
-        System.out.println("Processing " + message);
-
         final MessageType type = MessageType.valueOf(message.get("messageType").getAsString());
 
         final MessageProcessor messageProcessor = messageProcessors.get(type);
