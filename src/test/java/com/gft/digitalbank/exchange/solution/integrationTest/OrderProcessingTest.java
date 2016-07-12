@@ -3,6 +3,7 @@ package com.gft.digitalbank.exchange.solution.integrationTest;
 import com.gft.digitalbank.exchange.solution.MessageFactory;
 import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
 import com.gft.digitalbank.exchange.solution.dataStructures.ProductRegistry;
+import com.gft.digitalbank.exchange.solution.error.ErrorsLog;
 import com.gft.digitalbank.exchange.solution.processing.MessageDispatcherFactory;
 import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
 import com.google.gson.JsonObject;
@@ -24,6 +25,8 @@ public class OrderProcessingTest {
 
     private ExchangeRegistry exchangeRegistry;
 
+    private ErrorsLog errorsLog;
+
     private String product = "A";
 
     private String broker = "Broker";
@@ -33,8 +36,9 @@ public class OrderProcessingTest {
     @Before
     public void setup() {
         exchangeRegistry = new ExchangeRegistry();
+        errorsLog = new ErrorsLog();
         messageProcessingDispatcher = MessageDispatcherFactory.createMessageDispatcher(
-                new ConcurrentHashMap<>(), exchangeRegistry);
+                new ConcurrentHashMap<>(), exchangeRegistry, errorsLog);
     }
 
     //TODO: split this test into smaller ones
@@ -66,6 +70,8 @@ public class OrderProcessingTest {
             assertThat(transaction.getPrice()).isEqualTo(1000);
             assertThat(transaction.getProduct()).isEqualTo(product);
         });
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     @Test
@@ -95,6 +101,8 @@ public class OrderProcessingTest {
         });
 
         assertThat(productRegistry.getTransactions()).isEmpty();
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     @Test
@@ -124,6 +132,8 @@ public class OrderProcessingTest {
             assertThat(transaction.getPrice()).isEqualTo(1000);
             assertThat(transaction.getProduct()).isEqualTo(product);
         });
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     @Test
@@ -153,6 +163,8 @@ public class OrderProcessingTest {
             assertThat(transaction.getPrice()).isEqualTo(2000);
             assertThat(transaction.getProduct()).isEqualTo(product);
         });
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     @Test
@@ -182,6 +194,8 @@ public class OrderProcessingTest {
         });
 
         assertThat(productRegistry.getTransactions()).isEmpty();
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     @Test
@@ -211,6 +225,8 @@ public class OrderProcessingTest {
             assertThat(transaction.getPrice()).isEqualTo(2000);
             assertThat(transaction.getProduct()).isEqualTo(product);
         });
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     // ORDER OF MATCHING
@@ -258,6 +274,8 @@ public class OrderProcessingTest {
         assertThat(productRegistry.getTransactions())
                 .extracting("price")
                 .containsExactly(2000, 1500, 1200, 1200);
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     @Test
@@ -301,6 +319,8 @@ public class OrderProcessingTest {
         assertThat(productRegistry.getTransactions())
                 .extracting("price")
                 .containsExactly(500, 1000, 1000, 2000);
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     // MODIFICATION & CANCEL
@@ -330,6 +350,8 @@ public class OrderProcessingTest {
                 .hasFieldOrPropertyWithValue("id", 1)
                 .hasFieldOrPropertyWithValue("price", 500)
                 .hasFieldOrPropertyWithValue("amount", 10);
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     @Test
@@ -348,6 +370,8 @@ public class OrderProcessingTest {
 
         assertThat(productRegistry.getSellOrders()).hasOnlyOneElementSatisfying(order ->
                 assertThat(order.getTimestamp()).isEqualTo(99));
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     @Test
@@ -366,6 +390,8 @@ public class OrderProcessingTest {
 
         assertThat(productRegistry.getBuyOrders()).hasOnlyOneElementSatisfying(order ->
                 assertThat(order.getTimestamp()).isEqualTo(1));
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     @Test
@@ -375,6 +401,9 @@ public class OrderProcessingTest {
 
         // when
         messageProcessingDispatcher.process(modificationMessage);
+
+        // then
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     @Test
@@ -395,6 +424,8 @@ public class OrderProcessingTest {
 
         assertThat(productRegistry.getSellOrders()).hasOnlyOneElementSatisfying(order ->
                 assertThat(order.getId()).isEqualTo(1));
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
 
@@ -405,6 +436,9 @@ public class OrderProcessingTest {
 
         // when
         messageProcessingDispatcher.process(cancelMessage);
+
+        // then
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     @Test
@@ -422,6 +456,8 @@ public class OrderProcessingTest {
         ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct(product);
 
         assertThat(productRegistry.getBuyOrders()).isEmpty();
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     @Test
@@ -443,6 +479,8 @@ public class OrderProcessingTest {
             assertThat(order.getAmount()).isEqualTo(10);
             assertThat(order.getPrice()).isEqualTo(1000);
         });
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     @Test
@@ -460,6 +498,8 @@ public class OrderProcessingTest {
         ProductRegistry productRegistry = exchangeRegistry.getProductRegistryForProduct(product);
 
         assertThat(productRegistry.getBuyOrders()).hasSize(1);
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 
     @Test
@@ -497,5 +537,7 @@ public class OrderProcessingTest {
             assertThat(tx.getAmount()).isEqualTo(5);
             assertThat(tx.getPrice()).isEqualTo(500);
         });
+
+        assertThat(errorsLog.isEmpty()).isTrue();
     }
 }

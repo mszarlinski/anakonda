@@ -5,6 +5,7 @@ import java.util.List;
 
 import javax.naming.NamingException;
 
+import com.gft.digitalbank.exchange.solution.error.ErrorsLog;
 import org.springframework.util.Assert;
 
 import com.gft.digitalbank.exchange.Exchange;

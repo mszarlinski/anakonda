@@ -1,11 +1,11 @@
 package com.gft.digitalbank.exchange.solution.processing;
 
-import java.util.concurrent.ConcurrentMap;
-
 import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
 import com.gft.digitalbank.exchange.solution.dataStructures.ProductRegistry;
 import com.gft.digitalbank.exchange.solution.message.Order;
 import com.google.gson.JsonObject;
+
+import java.util.concurrent.ConcurrentMap;
 
 /**
  * @author mszarlinski on 2016-07-01.

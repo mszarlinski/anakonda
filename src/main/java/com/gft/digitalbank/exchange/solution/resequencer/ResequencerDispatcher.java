@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.locks.ReentrantLock;
 
 import com.gft.digitalbank.exchange.solution.error.ErrorsLog;
 import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
@@ -26,6 +27,8 @@ public class ResequencerDispatcher {
     private final MessageProcessingDispatcher messageProcessingDispatcher;
 
     private final ErrorsLog errorsLog;
+
+    private final ReentrantLock mutex = new ReentrantLock(true);
 
 //TODO: zakladajac, ze wiadomosci pochodzace od tego samego brokera przychodza w tej samej kolejnosci,
     // nigdy nie będzie sytuacji, zeby MOD przyszedl przed ORDER
@@ -48,18 +51,19 @@ public class ResequencerDispatcher {
         if (product != null) {
             addMessageToResequencer(message, product);
         } else {
-            errorsLog.addErrorMessage("Unable to classify altering message to a product: " + message);
+            errorsLog.logException("Unable to classify altering message to a product: " + message);
         }
     }
 
     private void addMessageToResequencer(final JsonObject message, final String product) {
-
+        mutex.lock();
         Resequencer resequencer = productResequencers.get(product);
         if (resequencer == null) {
-            resequencer = new Resequencer(messageProcessingDispatcher);
+            resequencer = new Resequencer(messageProcessingDispatcher, errorsLog);
             resequencer.startWithWindowOf(INITIAL_WINDOW_SIZE_MILLIS);
             productResequencers.put(product, resequencer);
         }
+        mutex.unlock();
         resequencer.addMessage(message);
     }
 
@@ -70,8 +74,6 @@ public class ResequencerDispatcher {
             .collect(toList());
 
         CompletableFuture.allOf(futures.toArray(new CompletableFuture[futures.size()])).join();
-
-        // TODO: handle Resequencers' failures - supplyAsync(r::awaitShutdown)
     }
 
 }

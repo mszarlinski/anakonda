@@ -12,8 +12,10 @@ import static com.gft.digitalbank.exchange.solution.processing.MessageDispatcher
  * @author mszarlinski on 2016-07-11.
  */
 public class ResequencerDispatcherFactory {
+
     public static ResequencerDispatcher createResequencerDispatcher(final ConcurrentMap<Integer, Order> ordersRegistry, final ExchangeRegistry exchangeRegistry, final ErrorsLog
             errorsLog) {
-        return new ResequencerDispatcher(createMessageDispatcher(ordersRegistry, exchangeRegistry), errorsLog);
+
+        return new ResequencerDispatcher(createMessageDispatcher(ordersRegistry, exchangeRegistry, errorsLog), errorsLog);
     }
 }

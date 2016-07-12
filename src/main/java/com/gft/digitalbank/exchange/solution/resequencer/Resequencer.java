@@ -1,5 +1,6 @@
 package com.gft.digitalbank.exchange.solution.resequencer;
 
+import com.gft.digitalbank.exchange.solution.error.ErrorsLog;
 import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
@@ -32,15 +33,15 @@ class Resequencer {
 
     private long maxProcessedMessageTimestamp = -1;
 
-    private boolean finishedWithoutErrors = true;
-
     private final PriorityBlockingQueue<JsonObject> orderingQueue =
             new PriorityBlockingQueue<>(11, Comparator.comparingLong(msg -> msg.get("timestamp").getAsLong()));
 
     private final MessageProcessingDispatcher messageProcessingDispatcher;
+    private final ErrorsLog errorsLog;
 
-    Resequencer(final MessageProcessingDispatcher messageProcessingDispatcher) {
+    Resequencer(final MessageProcessingDispatcher messageProcessingDispatcher, final ErrorsLog errorsLog) {
         this.messageProcessingDispatcher = messageProcessingDispatcher;
+        this.errorsLog = errorsLog;
     }
 
     void startWithWindowOf(final int initialWindowSizeMillis) {
@@ -52,7 +53,7 @@ class Resequencer {
     }
 
     private Thread createTimerThread() {
-        return new Thread(() -> {
+        final Thread timerThread = new Thread(() -> {
             while (keepRunning) {
                 try {
                     Thread.sleep(windowSizeMillis);
@@ -65,6 +66,9 @@ class Resequencer {
             flushAllMessagesOnShutdown();
             shutdownCompletedMutex.release();
         });
+
+        timerThread.setUncaughtExceptionHandler((t, e) -> errorsLog.logException(e.getMessage()));
+        return timerThread;
     }
 
     private void flushOldMessages() {
@@ -90,8 +94,7 @@ class Resequencer {
     private void assertCorrectTimestamp(final long timestampToBeProcessed) throws IllegalStateException {
         if (maxProcessedMessageTimestamp != -1) {
             if (maxProcessedMessageTimestamp > timestampToBeProcessed) {
-                log.error("Messages are not processed in correct order");
-                finishedWithoutErrors = false;
+                errorsLog.logException("Messages are not processed in correct order");
                 shutdownCompletedMutex.release();
             }
         } else {
@@ -108,14 +111,12 @@ class Resequencer {
         orderingQueue.add(message);
     }
 
-    boolean awaitShutdown() {
+    void awaitShutdown() {
         keepRunning = false;
         try {
             shutdownCompletedMutex.acquire();
         } catch (InterruptedException ex) {
             log.error("Failed to awaitShutdown gracefully.", ex);
         }
-
-        return finishedWithoutErrors;
     }
 }
