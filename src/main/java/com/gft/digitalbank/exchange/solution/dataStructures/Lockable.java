@@ -18,18 +18,6 @@ public interface Lockable {
         }
     }
 
-    default <T> T doWithLock(final Callable<T> callable) {
-        lock();
-        try {
-            return callable.call();
-        } catch (Exception ex) {
-            Throwables.propagate(ex);
-            return null;
-        } finally {
-            unlock();
-        }
-    }
-
     void lock();
 
     void unlock();
