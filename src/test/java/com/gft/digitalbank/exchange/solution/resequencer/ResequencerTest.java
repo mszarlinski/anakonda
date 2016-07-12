@@ -1,13 +1,12 @@
 package com.gft.digitalbank.exchange.solution.resequencer;
 
+import com.gft.digitalbank.exchange.solution.error.ErrorsLog;
 import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
 import com.google.gson.JsonObject;
+import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
+import org.mockito.*;
 import org.mockito.runners.MockitoJUnitRunner;
 
 import java.util.Collections;
@@ -27,11 +26,17 @@ import static org.mockito.Mockito.verify;
 @RunWith(MockitoJUnitRunner.class)
 public class ResequencerTest {
 
+    @Mock
+    private MessageProcessingDispatcher messageProcessingDispatcher;
+
     @Captor
     private ArgumentCaptor<JsonObject> processedMessageCaptor;
 
     @Mock
-    private MessageProcessingDispatcher messageProcessingDispatcher;
+    private ErrorsLog errorsLog;
+
+    @Captor
+    private ArgumentCaptor<String> errorMessageCaptor;
 
     @InjectMocks
     private Resequencer resequencer;
@@ -73,10 +78,10 @@ public class ResequencerTest {
         resequencer.addMessage(buyMessage2);
         Thread.sleep(100);
         resequencer.addMessage(buyMessage1);
-
-        boolean success = resequencer.awaitShutdown();
+        Thread.sleep(100);
 
         // then
-        assertThat(success).isFalse();
+        verify(errorsLog).logException(errorMessageCaptor.capture());
+        assertThat(errorMessageCaptor.getValue()).contains("Messages are not processed in correct order");
     }
 }
