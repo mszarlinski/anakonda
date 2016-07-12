@@ -1,6 +1,6 @@
 package com.gft.digitalbank.exchange.solution.resequencer;
 
-import com.gft.digitalbank.exchange.solution.error.ErrorsLog;
+import com.gft.digitalbank.exchange.solution.error.AsyncErrorsKeeper;
 import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
@@ -37,11 +37,11 @@ class Resequencer {
             new PriorityBlockingQueue<>(11, Comparator.comparingLong(msg -> msg.get("timestamp").getAsLong()));
 
     private final MessageProcessingDispatcher messageProcessingDispatcher;
-    private final ErrorsLog errorsLog;
+    private final AsyncErrorsKeeper asyncErrorsKeeper;
 
-    Resequencer(final MessageProcessingDispatcher messageProcessingDispatcher, final ErrorsLog errorsLog) {
+    Resequencer(final MessageProcessingDispatcher messageProcessingDispatcher, final AsyncErrorsKeeper asyncErrorsKeeper) {
         this.messageProcessingDispatcher = messageProcessingDispatcher;
-        this.errorsLog = errorsLog;
+        this.asyncErrorsKeeper = asyncErrorsKeeper;
     }
 
     void startWithWindowOf(final int initialWindowSizeMillis) {
@@ -53,22 +53,30 @@ class Resequencer {
     }
 
     private Thread createTimerThread() {
-        final Thread timerThread = new Thread(() -> {
+        return new Thread(() -> {
             while (keepRunning) {
                 try {
                     Thread.sleep(windowSizeMillis);
                     flushOldMessages();
                     maxArrivalTimestampToProcess += windowSizeMillis;
-                } catch (InterruptedException ex) {
-                    log.error("Error while waiting on mutex", ex);
+                } catch (Exception ex) {
+                    // save exception but do not terminate a thread
+                    asyncErrorsKeeper.logError(ex.getMessage());
                 }
             }
-            flushAllMessagesOnShutdown();
-            shutdownCompletedMutex.release();
-        });
 
-        timerThread.setUncaughtExceptionHandler((t, e) -> errorsLog.logException(e.getMessage()));
-        return timerThread;
+            flushAllMessagesAndShutdown();
+        });
+    }
+
+    private void flushAllMessagesAndShutdown() {
+        try {
+            flushAllMessagesOnShutdown();
+        } catch (Exception ex) {
+            asyncErrorsKeeper.logError(ex.getMessage());
+        } finally {
+            shutdownCompletedMutex.release();
+        }
     }
 
     private void flushOldMessages() {
@@ -94,7 +102,7 @@ class Resequencer {
     private void assertCorrectTimestamp(final long timestampToBeProcessed) throws IllegalStateException {
         if (maxProcessedMessageTimestamp != -1) {
             if (maxProcessedMessageTimestamp > timestampToBeProcessed) {
-                errorsLog.logException("Messages are not processed in correct order");
+                asyncErrorsKeeper.logError("Messages are not processed in correct order");
                 shutdownCompletedMutex.release();
             }
         } else {

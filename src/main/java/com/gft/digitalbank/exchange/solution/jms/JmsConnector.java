@@ -1,7 +1,7 @@
 package com.gft.digitalbank.exchange.solution.jms;
 
 import com.gft.digitalbank.exchange.solution.Jndi;
-import com.gft.digitalbank.exchange.solution.error.ErrorsLog;
+import com.gft.digitalbank.exchange.solution.error.AsyncErrorsKeeper;
 import com.gft.digitalbank.exchange.solution.resequencer.ResequencerDispatcher;
 import org.apache.activemq.ActiveMQConnectionFactory;
 import org.apache.commons.logging.Log;
@@ -21,25 +21,25 @@ public class JmsConnector {
 
     private final Jndi jndi;
 
-    private final ErrorsLog errorsLog;
+    private final AsyncErrorsKeeper asyncErrorsKeeper;
 
-    public JmsConnector(final Jndi jndi, final ErrorsLog errorsLog) {
+    public JmsConnector(final Jndi jndi, final AsyncErrorsKeeper asyncErrorsKeeper) {
         this.jndi = jndi;
-        this.errorsLog = errorsLog;
+        this.asyncErrorsKeeper = asyncErrorsKeeper;
     }
 
     public JmsContext connect(final List<String> queues, final CountDownLatch shutdownLatch, final ResequencerDispatcher resequencerDispatcher) throws JMSException {
         final ActiveMQConnectionFactory connectionFactory = jndi.lookup("ConnectionFactory");
 
         final Connection connection = connectionFactory.createConnection();
-        connection.setExceptionListener(ex -> errorsLog.logException(ex.getMessage()));
+        connection.setExceptionListener(ex -> asyncErrorsKeeper.logError(ex.getMessage()));
         connection.start();
 
         //TODO: parallel??
         queues.stream()
                 .forEach(queue -> {
                     final ExchangeMessageListener pt = new ExchangeMessageListener();
-                    pt.start(queue, shutdownLatch, connection, resequencerDispatcher, errorsLog);
+                    pt.start(queue, shutdownLatch, connection, resequencerDispatcher, asyncErrorsKeeper);
                 });
 
         return JmsContext.builder()

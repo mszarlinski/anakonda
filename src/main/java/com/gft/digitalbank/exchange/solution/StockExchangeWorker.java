@@ -3,7 +3,7 @@ package com.gft.digitalbank.exchange.solution;
 import com.gft.digitalbank.exchange.listener.ProcessingListener;
 import com.gft.digitalbank.exchange.model.SolutionResult;
 import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
-import com.gft.digitalbank.exchange.solution.error.ErrorsLog;
+import com.gft.digitalbank.exchange.solution.error.AsyncErrorsKeeper;
 import com.gft.digitalbank.exchange.solution.jms.JmsConnector;
 import com.gft.digitalbank.exchange.solution.jms.JmsContext;
 import com.gft.digitalbank.exchange.solution.message.Order;
@@ -37,20 +37,20 @@ public class StockExchangeWorker extends Thread {
 
     private final ResequencerDispatcher resequencerDispatcher;
 
-    private final ErrorsLog errorsLog;
+    private final AsyncErrorsKeeper asyncErrorsKeeper;
 
     public StockExchangeWorker(final ProcessingListener processingListener, final List<String> destinations) throws NamingException {
-        errorsLog = new ErrorsLog();
-        jmsConnector = new JmsConnector(new Jndi(), errorsLog);
+        asyncErrorsKeeper = new AsyncErrorsKeeper();
+        jmsConnector = new JmsConnector(new Jndi(), asyncErrorsKeeper);
         exchangeRegistry = new ExchangeRegistry();
 
         final ConcurrentMap<Integer, Order> ordersRegistry = new ConcurrentHashMap<>();
-        resequencerDispatcher = ResequencerDispatcherFactory.createResequencerDispatcher(ordersRegistry, exchangeRegistry, errorsLog);
+        resequencerDispatcher = ResequencerDispatcherFactory.createResequencerDispatcher(ordersRegistry, exchangeRegistry, asyncErrorsKeeper);
 
         this.processingListener = processingListener;
         this.destinations = destinations;
 
-        setUncaughtExceptionHandler((t, e) -> errorsLog.logException(e.getMessage()));
+        setUncaughtExceptionHandler((t, e) -> asyncErrorsKeeper.logError(e.getMessage()));
     }
 
     @Override
@@ -66,7 +66,7 @@ public class StockExchangeWorker extends Thread {
 
             resequencerDispatcher.awaitShutdown();
 
-            if (errorsLog.isEmpty()) {
+            if (asyncErrorsKeeper.isEmpty()) {
                 processingListener.processingDone(SolutionResult.builder()
                     .orderBooks(exchangeRegistry.extractOrderBooks())
                     .transactions(exchangeRegistry.extractTransactions())
@@ -74,8 +74,8 @@ public class StockExchangeWorker extends Thread {
 
                 log.debug("Processing finished");
             } else {
-                log.error(errorsLog.getMessages());
-                System.err.println(errorsLog.getMessages());
+                log.error(asyncErrorsKeeper.getMessages());
+                System.err.println(asyncErrorsKeeper.getMessages());
                 processingListener.processingDone(SolutionResult.builder().build()); //TODO: ErrorSolutionResult
             }
         } catch (Exception ex) {

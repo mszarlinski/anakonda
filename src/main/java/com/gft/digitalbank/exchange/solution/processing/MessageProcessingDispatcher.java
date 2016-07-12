@@ -1,7 +1,7 @@
 package com.gft.digitalbank.exchange.solution.processing;
 
 import com.gft.digitalbank.exchange.model.orders.MessageType;
-import com.gft.digitalbank.exchange.solution.error.ErrorsLog;
+import com.gft.digitalbank.exchange.solution.error.AsyncErrorsKeeper;
 import com.google.common.collect.ImmutableMap;
 import com.google.gson.JsonObject;
 
@@ -14,12 +14,12 @@ public class MessageProcessingDispatcher {
 
     private final Map<MessageType, MessageProcessor> messageProcessors;
 
-    private final ErrorsLog errorsLog;
+    private final AsyncErrorsKeeper asyncErrorsKeeper;
 
     public MessageProcessingDispatcher(final ModificationProcessor modificationProcessor, final CancellationProcessor cancellationProcessor,
-        final BuySellOrderProcessor buySellOrderProcessor, final ErrorsLog errorsLog) {
+        final BuySellOrderProcessor buySellOrderProcessor, final AsyncErrorsKeeper asyncErrorsKeeper) {
 
-        this.errorsLog = errorsLog;
+        this.asyncErrorsKeeper = asyncErrorsKeeper;
 
         messageProcessors = ImmutableMap.<MessageType, MessageProcessor>builder()
             .put(MessageType.ORDER, buySellOrderProcessor)
@@ -29,13 +29,15 @@ public class MessageProcessingDispatcher {
     }
 
     public void process(final JsonObject message) {
+        System.out.println("Processing " + message);
+
         final MessageType type = MessageType.valueOf(message.get("messageType").getAsString());
 
         final MessageProcessor messageProcessor = messageProcessors.get(type);
         if (messageProcessor != null) {
             messageProcessor.process(message);
         } else {
-            errorsLog.logException("Unsupported message passed to process: " + message);
+            asyncErrorsKeeper.logError("Unsupported message passed to process: " + message);
         }
     }
 }

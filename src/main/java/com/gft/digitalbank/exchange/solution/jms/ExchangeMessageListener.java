@@ -1,7 +1,7 @@
 package com.gft.digitalbank.exchange.solution.jms;
 
 import com.gft.digitalbank.exchange.model.orders.MessageType;
-import com.gft.digitalbank.exchange.solution.error.ErrorsLog;
+import com.gft.digitalbank.exchange.solution.error.AsyncErrorsKeeper;
 import com.gft.digitalbank.exchange.solution.resequencer.ResequencerDispatcher;
 import com.google.gson.JsonObject;
 import org.apache.commons.logging.Log;
@@ -28,19 +28,19 @@ public class ExchangeMessageListener implements MessageListener {
     private MessageConsumer messageConsumer;
 
     private ResequencerDispatcher resequencerDispatcher;
-    private ErrorsLog errorsLog;
+    private AsyncErrorsKeeper asyncErrorsKeeper;
 
     public ExchangeMessageListener() {
         this.messageDeserializer = new MessageDeserializer();
     }
 
     public void start(final String queueName, final CountDownLatch shutdownLatch, final Connection connection, final ResequencerDispatcher resequencerDispatcher,
-                      final ErrorsLog errorsLog) {
+                      final AsyncErrorsKeeper asyncErrorsKeeper) {
         log.debug("Starting task for queue: " + queueName);
 
         this.shutdownLatch = shutdownLatch;
         this.resequencerDispatcher = resequencerDispatcher;
-        this.errorsLog = errorsLog;
+        this.asyncErrorsKeeper = asyncErrorsKeeper;
 
         try {
             session = connection.createSession(NON_TRANSACTED, Session.AUTO_ACKNOWLEDGE);
@@ -82,7 +82,7 @@ public class ExchangeMessageListener implements MessageListener {
             } catch (Exception ex) {
                 // TODO: czy jest sens tutaj logowaæ?
                 log.error("Error while processing message", ex);
-                errorsLog.logException(ex.getMessage());
+                asyncErrorsKeeper.logError(ex.getMessage());
             }
         } else {
             log.error("Unable to process message of class: " + message.getClass().getName());

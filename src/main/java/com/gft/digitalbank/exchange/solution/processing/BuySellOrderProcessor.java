@@ -25,7 +25,9 @@ public class BuySellOrderProcessor implements MessageProcessor {
     public void process(final JsonObject message) {
         final Order order = Order.fromMessage(message);
         final String product = order.getProduct();
-
+        if ("AX".equals(product)) {
+            throw new NullPointerException("test");
+        }
         exchangeRegistry.doWithLock(() -> {
             final ProductRegistry productRegistry = exchangeRegistry.getOrCreateProductRegistryForProduct(product);
 

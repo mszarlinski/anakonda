@@ -1,9 +1,8 @@
 package com.gft.digitalbank.exchange.solution.resequencer;
 
-import com.gft.digitalbank.exchange.solution.error.ErrorsLog;
+import com.gft.digitalbank.exchange.solution.error.AsyncErrorsKeeper;
 import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
 import com.google.gson.JsonObject;
-import org.junit.Ignore;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.*;
@@ -33,7 +32,7 @@ public class ResequencerTest {
     private ArgumentCaptor<JsonObject> processedMessageCaptor;
 
     @Mock
-    private ErrorsLog errorsLog;
+    private AsyncErrorsKeeper asyncErrorsKeeper;
 
     @Captor
     private ArgumentCaptor<String> errorMessageCaptor;
@@ -81,7 +80,7 @@ public class ResequencerTest {
         Thread.sleep(100);
 
         // then
-        verify(errorsLog).logException(errorMessageCaptor.capture());
+        verify(asyncErrorsKeeper).logError(errorMessageCaptor.capture());
         assertThat(errorMessageCaptor.getValue()).contains("Messages are not processed in correct order");
     }
 }

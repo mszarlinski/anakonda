@@ -7,13 +7,13 @@ import static java.lang.String.format;
 /**
  * @author mszarlinski on 2016-07-11.
  */
-public class ErrorsLog {
+public class AsyncErrorsKeeper {
 
     public static final String MESSAGE_FORMAT = "[%s] - %s";
 
     private final ConcurrentLinkedQueue<String> messages = new ConcurrentLinkedQueue<>();
 
-    public void logException(final String message) {
+    public void logError(final String message) {
         messages.add(format(MESSAGE_FORMAT, Thread.currentThread().getName(), message));
     }
 

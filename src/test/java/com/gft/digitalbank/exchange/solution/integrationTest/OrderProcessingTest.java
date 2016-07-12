@@ -3,7 +3,7 @@ package com.gft.digitalbank.exchange.solution.integrationTest;
 import com.gft.digitalbank.exchange.solution.MessageFactory;
 import com.gft.digitalbank.exchange.solution.dataStructures.ExchangeRegistry;
 import com.gft.digitalbank.exchange.solution.dataStructures.ProductRegistry;
-import com.gft.digitalbank.exchange.solution.error.ErrorsLog;
+import com.gft.digitalbank.exchange.solution.error.AsyncErrorsKeeper;
 import com.gft.digitalbank.exchange.solution.processing.MessageDispatcherFactory;
 import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
 import com.google.gson.JsonObject;
@@ -25,7 +25,7 @@ public class OrderProcessingTest {
 
     private ExchangeRegistry exchangeRegistry;
 
-    private ErrorsLog errorsLog;
+    private AsyncErrorsKeeper asyncErrorsKeeper;
 
     private String product = "A";
 
@@ -36,9 +36,9 @@ public class OrderProcessingTest {
     @Before
     public void setup() {
         exchangeRegistry = new ExchangeRegistry();
-        errorsLog = new ErrorsLog();
+        asyncErrorsKeeper = new AsyncErrorsKeeper();
         messageProcessingDispatcher = MessageDispatcherFactory.createMessageDispatcher(
-                new ConcurrentHashMap<>(), exchangeRegistry, errorsLog);
+                new ConcurrentHashMap<>(), exchangeRegistry, asyncErrorsKeeper);
     }
 
     //TODO: split this test into smaller ones
@@ -71,7 +71,7 @@ public class OrderProcessingTest {
             assertThat(transaction.getProduct()).isEqualTo(product);
         });
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     @Test
@@ -102,7 +102,7 @@ public class OrderProcessingTest {
 
         assertThat(productRegistry.getTransactions()).isEmpty();
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     @Test
@@ -133,7 +133,7 @@ public class OrderProcessingTest {
             assertThat(transaction.getProduct()).isEqualTo(product);
         });
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     @Test
@@ -164,7 +164,7 @@ public class OrderProcessingTest {
             assertThat(transaction.getProduct()).isEqualTo(product);
         });
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     @Test
@@ -195,7 +195,7 @@ public class OrderProcessingTest {
 
         assertThat(productRegistry.getTransactions()).isEmpty();
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     @Test
@@ -226,7 +226,7 @@ public class OrderProcessingTest {
             assertThat(transaction.getProduct()).isEqualTo(product);
         });
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     // ORDER OF MATCHING
@@ -275,7 +275,7 @@ public class OrderProcessingTest {
                 .extracting("price")
                 .containsExactly(2000, 1500, 1200, 1200);
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     @Test
@@ -320,7 +320,7 @@ public class OrderProcessingTest {
                 .extracting("price")
                 .containsExactly(500, 1000, 1000, 2000);
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     // MODIFICATION & CANCEL
@@ -351,7 +351,7 @@ public class OrderProcessingTest {
                 .hasFieldOrPropertyWithValue("price", 500)
                 .hasFieldOrPropertyWithValue("amount", 10);
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     @Test
@@ -371,7 +371,7 @@ public class OrderProcessingTest {
         assertThat(productRegistry.getSellOrders()).hasOnlyOneElementSatisfying(order ->
                 assertThat(order.getTimestamp()).isEqualTo(99));
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     @Test
@@ -391,7 +391,7 @@ public class OrderProcessingTest {
         assertThat(productRegistry.getBuyOrders()).hasOnlyOneElementSatisfying(order ->
                 assertThat(order.getTimestamp()).isEqualTo(1));
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     @Test
@@ -403,7 +403,7 @@ public class OrderProcessingTest {
         messageProcessingDispatcher.process(modificationMessage);
 
         // then
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     @Test
@@ -425,7 +425,7 @@ public class OrderProcessingTest {
         assertThat(productRegistry.getSellOrders()).hasOnlyOneElementSatisfying(order ->
                 assertThat(order.getId()).isEqualTo(1));
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
 
@@ -438,7 +438,7 @@ public class OrderProcessingTest {
         messageProcessingDispatcher.process(cancelMessage);
 
         // then
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     @Test
@@ -457,7 +457,7 @@ public class OrderProcessingTest {
 
         assertThat(productRegistry.getBuyOrders()).isEmpty();
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     @Test
@@ -480,7 +480,7 @@ public class OrderProcessingTest {
             assertThat(order.getPrice()).isEqualTo(1000);
         });
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     @Test
@@ -499,7 +499,7 @@ public class OrderProcessingTest {
 
         assertThat(productRegistry.getBuyOrders()).hasSize(1);
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 
     @Test
@@ -538,6 +538,6 @@ public class OrderProcessingTest {
             assertThat(tx.getPrice()).isEqualTo(500);
         });
 
-        assertThat(errorsLog.isEmpty()).isTrue();
+        assertThat(asyncErrorsKeeper.isEmpty()).isTrue();
     }
 }

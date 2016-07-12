@@ -8,7 +8,7 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import java.util.concurrent.locks.ReentrantLock;
 
-import com.gft.digitalbank.exchange.solution.error.ErrorsLog;
+import com.gft.digitalbank.exchange.solution.error.AsyncErrorsKeeper;
 import com.gft.digitalbank.exchange.solution.processing.MessageProcessingDispatcher;
 import com.google.gson.JsonObject;
 
@@ -26,7 +26,7 @@ public class ResequencerDispatcher {
 
     private final MessageProcessingDispatcher messageProcessingDispatcher;
 
-    private final ErrorsLog errorsLog;
+    private final AsyncErrorsKeeper asyncErrorsKeeper;
 
     private final ReentrantLock mutex = new ReentrantLock(true);
 
@@ -34,9 +34,9 @@ public class ResequencerDispatcher {
     // nigdy nie będzie sytuacji, zeby MOD przyszedl przed ORDER
 //    private final ConcurrentMap<Integer, List<JsonObject>> unclassifiedMessages = new ConcurrentHashMap<>();
 
-    ResequencerDispatcher(final MessageProcessingDispatcher messageProcessingDispatcher, final ErrorsLog errorsLog) {
+    ResequencerDispatcher(final MessageProcessingDispatcher messageProcessingDispatcher, final AsyncErrorsKeeper asyncErrorsKeeper) {
         this.messageProcessingDispatcher = messageProcessingDispatcher;
-        this.errorsLog = errorsLog;
+        this.asyncErrorsKeeper = asyncErrorsKeeper;
     }
 
     public void addOrderMessage(final JsonObject message) {
@@ -51,7 +51,7 @@ public class ResequencerDispatcher {
         if (product != null) {
             addMessageToResequencer(message, product);
         } else {
-            errorsLog.logException("Unable to classify altering message to a product: " + message);
+            asyncErrorsKeeper.logError("Unable to classify altering message to a product: " + message);
         }
     }
 
@@ -59,7 +59,7 @@ public class ResequencerDispatcher {
         mutex.lock();
         Resequencer resequencer = productResequencers.get(product);
         if (resequencer == null) {
-            resequencer = new Resequencer(messageProcessingDispatcher, errorsLog);
+            resequencer = new Resequencer(messageProcessingDispatcher, asyncErrorsKeeper);
             resequencer.startWithWindowOf(INITIAL_WINDOW_SIZE_MILLIS);
             productResequencers.put(product, resequencer);
         }
