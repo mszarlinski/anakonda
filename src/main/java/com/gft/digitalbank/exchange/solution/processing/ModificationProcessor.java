@@ -31,7 +31,7 @@ public class ModificationProcessor implements MessageProcessor {
         final int modifiedOrderId = modification.getModifiedOrderId();
         final Order order = ordersRegistry.get(modifiedOrderId);
 
-        if (order != null) {
+        if (order != null && order.sameBrokerAs(message)) {
             processOrder(modification, order);
         }
     }
@@ -51,7 +51,7 @@ public class ModificationProcessor implements MessageProcessor {
 
     private void modifyOrderInQueue(final Modification modification, final PriorityQueue<Order> ordersQueue, final ProductRegistry productRegistry) {
         ordersQueue.stream()
-            .filter(order -> modificationCanBeApplied(order, modification) && modification.willModifyOrder(order))
+            .filter(modification::willModifyOrder)
             .findFirst()
             .ifPresent(order -> doModifyOrderInQueue(order, modification, ordersQueue, productRegistry));
     }
@@ -67,9 +67,5 @@ public class ModificationProcessor implements MessageProcessor {
         } else {
             ordersRegistry.remove(modifiedOrder.getId()); // forget about order
         }
-    }
-
-    private boolean modificationCanBeApplied(final Order order, final Modification modification) {
-        return order.getId() == modification.getModifiedOrderId() && order.getBroker().equals(modification.getBroker());
     }
 }

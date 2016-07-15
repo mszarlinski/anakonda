@@ -31,7 +31,7 @@ public class CancellationProcessor implements MessageProcessor {
         final int cancelledOrderId = cancellation.getCancelledOrderId();
         final Order order = ordersRegistry.get(cancelledOrderId);
 
-        if (order != null) {
+        if (order != null && order.sameBrokerAs(message)) {
             processOrder(cancellation, order);
         }
     }
@@ -52,16 +52,12 @@ public class CancellationProcessor implements MessageProcessor {
 
     private void cancelOrderInQueue(final Cancellation cancellation, final Queue<Order> ordersQueue) {
         ordersQueue.stream()
-            .filter(o -> cancelCanBeApplied(o, cancellation))
+            .filter(o -> o.getId() == cancellation.getCancelledOrderId())
             .findFirst()
             .ifPresent(o -> {
                 ordersQueue.remove(o);
                 ordersRegistry.remove(cancellation.getCancelledOrderId());
             });
-    }
-
-    private boolean cancelCanBeApplied(final Order order, final Cancellation cancellation) {
-        return order.getId() == cancellation.getCancelledOrderId() && order.getBroker().equals(cancellation.getBroker());
     }
 }
 

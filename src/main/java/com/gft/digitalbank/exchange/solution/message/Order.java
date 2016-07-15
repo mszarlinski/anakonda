@@ -45,9 +45,15 @@ public class Order {
     }
 
     public void modify(final Modification modification) {
-        this.amount = modification.getNewAmount();
-        this.price = modification.getNewPrice();
-        this.timestamp = modification.getTimestamp();
+        amount = modification.getNewAmount();
+        price = modification.getNewPrice();
+        timestamp = modification.getTimestamp();
+    }
+
+    //TODO: test
+    public boolean sameBrokerAs(final JsonObject message) {
+        final String messageBroker = message.get("broker").getAsString();
+        return broker != null && broker.equals(messageBroker);
     }
 
     public OrderEntry toOrderEntry(final int position) {

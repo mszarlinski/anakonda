@@ -34,7 +34,8 @@ public class Modification {
             .build();
     }
 
+    //TODO: test
     public boolean willModifyOrder(final Order order) {
-        return order.getAmount() != newAmount || order.getPrice() != newPrice;
+        return order.getId() == modifiedOrderId && (order.getAmount() != newAmount || order.getPrice() != newPrice);
     }
 }
