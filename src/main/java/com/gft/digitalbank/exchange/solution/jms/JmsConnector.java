@@ -35,12 +35,10 @@ public class JmsConnector {
         connection.setExceptionListener(ex -> asyncErrorsKeeper.logError(ex.getMessage()));
         connection.start();
 
-        //TODO: parallel??
-        queues.stream()
-                .forEach(queue -> {
-                    final ExchangeMessageListener pt = new ExchangeMessageListener();
-                    pt.start(queue, shutdownLatch, connection, resequencerDispatcher, asyncErrorsKeeper);
-                });
+        queues.forEach(queue -> {
+            final ExchangeMessageListener pt = new ExchangeMessageListener();
+            pt.start(queue, shutdownLatch, connection, resequencerDispatcher, asyncErrorsKeeper);
+        });
 
         return JmsContext.builder()
                 .connection(connection)

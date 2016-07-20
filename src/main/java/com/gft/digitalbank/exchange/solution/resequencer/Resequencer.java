@@ -20,7 +20,6 @@ class Resequencer {
     /**
      * We assume that messages with arrivalTime within the window have correct order. The longer window is, the less performant is the system.
      */
-    //TODO: dynamically resizing window
     private long windowSizeMillis;
 
     private static final String ARRIVAL_TIMESTAMP_PROPERTY = "arrivalTimestamp";

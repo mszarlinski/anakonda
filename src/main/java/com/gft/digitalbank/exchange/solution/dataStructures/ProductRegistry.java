@@ -20,7 +20,6 @@ import com.gft.digitalbank.exchange.solution.message.Order;
 import com.gft.digitalbank.exchange.solution.processing.TransactionGenerator;
 
 /**
- * TODO: use OrderBook class, maybe move transactions to ExchangeRegistry as synchronized LinkedList?
  * @author mszarlinski on 2016-07-03.
  */
 @Data

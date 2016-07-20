@@ -73,8 +73,7 @@ class StockExchangeWorker extends Thread {
                 log.debug("Processing finished");
             } else {
                 log.error(asyncErrorsKeeper.getMessages());
-                System.err.println(asyncErrorsKeeper.getMessages());
-                processingListener.processingDone(SolutionResult.builder().build()); //TODO: ErrorSolutionResult
+                notifyAboutProcessingError();
             }
         } catch (Exception ex) {
             asyncErrorsKeeper.logError(ex.getMessage());
@@ -82,5 +81,10 @@ class StockExchangeWorker extends Thread {
             jmsConnector.shutdown(jmsContext);
             log.debug("Shutdown finished");
         }
+    }
+
+    // TODO:
+    private void notifyAboutProcessingError() {
+        processingListener.processingDone(SolutionResult.builder().build());
     }
 }

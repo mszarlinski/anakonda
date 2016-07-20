@@ -4,6 +4,7 @@ import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import lombok.SneakyThrows;
 
+import javax.jms.JMSException;
 import javax.jms.TextMessage;
 
 /**
@@ -13,9 +14,7 @@ class MessageDeserializer {
 
     private final JsonParser jsonParser = new JsonParser();
 
-    @SneakyThrows
-    JsonObject deserialize(final TextMessage message) {
+    JsonObject deserialize(final TextMessage message) throws JMSException {
         return jsonParser.parse(message.getText()).getAsJsonObject();
     }
-    //TODO: może jednak static typed ?
 }

@@ -80,8 +80,6 @@ class ExchangeMessageListener implements MessageListener {
                         log.error("Unsupported message type: " + messageType);
                 }
             } catch (Exception ex) {
-                // TODO: czy jest sens tutaj logować
-                log.error("Error while processing message", ex);
                 asyncErrorsKeeper.logError(ex.getMessage());
             }
         } else {
